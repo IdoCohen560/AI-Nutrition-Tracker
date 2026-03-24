@@ -12,3 +12,4 @@ frontend/build/
 *.pyc
 __pycache__/
 .env
+*.db

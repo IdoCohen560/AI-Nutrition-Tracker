@@ -17,11 +17,31 @@
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-family: Fraunces, Georgia, serif;
   font-weight: 700;
   font-size: 1.15rem;
   text-decoration: none;
   color: var(--text);
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.auth-logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 0.75rem;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow: var(--shadow);
 }
 
 .nav-links {

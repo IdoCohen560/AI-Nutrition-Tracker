@@ -27,6 +27,7 @@ export default function Register() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <img src="/logo192.png" alt="NutriBoo AI" className="auth-logo" />
         <h1>Create account</h1>
         <p className="muted">Your data is saved between sessions.</p>
         <form onSubmit={submit}>

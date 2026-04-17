@@ -14,7 +14,8 @@ export default function AppLayout() {
     <div className="shell">
       <header className="top-nav">
         <NavLink to="/dashboard" className="brand">
-          AI Food Tracker
+          <img src="/logo192.png" alt="NutriBoo AI" className="brand-logo" />
+          <span>NutriBoo AI</span>
         </NavLink>
         <nav className="nav-links">
           <NavLink to="/dashboard" end>

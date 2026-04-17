@@ -23,8 +23,9 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <img src="/logo192.png" alt="NutriBoo AI" className="auth-logo" />
         <h1>Sign in</h1>
-        <p className="muted">AI Food Tracker — pick up where you left off.</p>
+        <p className="muted">NutriBoo AI — pick up where you left off.</p>
         <form onSubmit={submit}>
           {err && <div className="error-banner">{err}</div>}
           <label>

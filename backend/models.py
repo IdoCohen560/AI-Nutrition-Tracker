@@ -32,6 +32,12 @@ class FoodLogEntry(Base):
     total_protein_g = Column(Float, default=0.0)
     total_carbs_g = Column(Float, default=0.0)
     total_fat_g = Column(Float, default=0.0)
+    total_saturated_fat_g = Column(Float, default=0.0)
+    total_cholesterol_mg = Column(Float, default=0.0)
+    total_sodium_mg = Column(Float, default=0.0)
+    total_fiber_g = Column(Float, default=0.0)
+    total_sugars_g = Column(Float, default=0.0)
+    total_added_sugars_g = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="entries")

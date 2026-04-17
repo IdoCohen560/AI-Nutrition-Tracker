@@ -48,6 +48,12 @@ def _entry_to_out(entry: FoodLogEntry) -> FoodLogEntryOut:
         total_protein_g=entry.total_protein_g,
         total_carbs_g=entry.total_carbs_g,
         total_fat_g=entry.total_fat_g,
+        total_saturated_fat_g=entry.total_saturated_fat_g or 0.0,
+        total_cholesterol_mg=entry.total_cholesterol_mg or 0.0,
+        total_sodium_mg=entry.total_sodium_mg or 0.0,
+        total_fiber_g=entry.total_fiber_g or 0.0,
+        total_sugars_g=entry.total_sugars_g or 0.0,
+        total_added_sugars_g=entry.total_added_sugars_g or 0.0,
         created_at=entry.created_at,
     )
 
@@ -130,6 +136,12 @@ def create_log(
         total_protein_g=totals["p"],
         total_carbs_g=totals["c"],
         total_fat_g=totals["f"],
+        total_saturated_fat_g=totals["sf"],
+        total_cholesterol_mg=totals["chol"],
+        total_sodium_mg=totals["sod"],
+        total_fiber_g=totals["fib"],
+        total_sugars_g=totals["sug"],
+        total_added_sugars_g=totals["asug"],
     )
     db.add(entry)
     db.commit()
@@ -143,6 +155,12 @@ def _totals_from_items(items: list[FoodItemOut]) -> dict:
         "p": sum(i.protein_g for i in items),
         "c": sum(i.carbs_g for i in items),
         "f": sum(i.fat_g for i in items),
+        "sf": sum(i.saturated_fat_g for i in items),
+        "chol": sum(i.cholesterol_mg for i in items),
+        "sod": sum(i.sodium_mg for i in items),
+        "fib": sum(i.fiber_g for i in items),
+        "sug": sum(i.sugars_g for i in items),
+        "asug": sum(i.added_sugars_g for i in items),
     }
 
 
@@ -159,6 +177,12 @@ def quick_log_from_recommendation(
         protein_g=body.protein_g,
         carbs_g=body.carbs_g,
         fat_g=body.fat_g,
+        saturated_fat_g=body.saturated_fat_g,
+        cholesterol_mg=body.cholesterol_mg,
+        sodium_mg=body.sodium_mg,
+        fiber_g=body.fiber_g,
+        sugars_g=body.sugars_g,
+        added_sugars_g=body.added_sugars_g,
     )
     totals = _totals_from_items([item])
     entry = FoodLogEntry(
@@ -171,6 +195,12 @@ def quick_log_from_recommendation(
         total_protein_g=totals["p"],
         total_carbs_g=totals["c"],
         total_fat_g=totals["f"],
+        total_saturated_fat_g=totals["sf"],
+        total_cholesterol_mg=totals["chol"],
+        total_sodium_mg=totals["sod"],
+        total_fiber_g=totals["fib"],
+        total_sugars_g=totals["sug"],
+        total_added_sugars_g=totals["asug"],
     )
     db.add(entry)
     db.commit()
@@ -246,6 +276,12 @@ def update_log(
         entry.total_protein_g = t["p"]
         entry.total_carbs_g = t["c"]
         entry.total_fat_g = t["f"]
+        entry.total_saturated_fat_g = t["sf"]
+        entry.total_cholesterol_mg = t["chol"]
+        entry.total_sodium_mg = t["sod"]
+        entry.total_fiber_g = t["fib"]
+        entry.total_sugars_g = t["sug"]
+        entry.total_added_sugars_g = t["asug"]
     db.add(entry)
     db.commit()
     db.refresh(entry)

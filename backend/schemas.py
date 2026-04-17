@@ -51,6 +51,12 @@ class FoodItemOut(BaseModel):
     protein_g: float
     carbs_g: float
     fat_g: float
+    saturated_fat_g: float = 0.0
+    cholesterol_mg: float = 0.0
+    sodium_mg: float = 0.0
+    fiber_g: float = 0.0
+    sugars_g: float = 0.0
+    added_sugars_g: float = 0.0
 
 
 class ParseLogRequest(BaseModel):
@@ -84,6 +90,12 @@ class FoodLogEntryOut(BaseModel):
     total_protein_g: float
     total_carbs_g: float
     total_fat_g: float
+    total_saturated_fat_g: float = 0.0
+    total_cholesterol_mg: float = 0.0
+    total_sodium_mg: float = 0.0
+    total_fiber_g: float = 0.0
+    total_sugars_g: float = 0.0
+    total_added_sugars_g: float = 0.0
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -137,4 +149,10 @@ class QuickLogFromRecRequest(BaseModel):
     protein_g: float = 0.0
     carbs_g: float = 0.0
     fat_g: float = 0.0
+    saturated_fat_g: float = 0.0
+    cholesterol_mg: float = 0.0
+    sodium_mg: float = 0.0
+    fiber_g: float = 0.0
+    sugars_g: float = 0.0
+    added_sugars_g: float = 0.0
     meal_type: MealType = "snack"

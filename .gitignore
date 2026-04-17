@@ -13,3 +13,32 @@ frontend/build/
 __pycache__/
 .env
 *.db
+
+# Local Netlify folder
+.netlify
+
+# ── GSD baseline (auto-generated) ──
+.gsd
+.gsd-id
+.bg-shell/
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/
+build/
+.venv/
+venv/
+target/
+vendor/
+*.log
+coverage/
+.cache/
+tmp/

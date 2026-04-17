@@ -58,7 +58,7 @@ def _entry_to_out(entry: FoodLogEntry) -> FoodLogEntryOut:
     )
 
 
-async def _run_parse(text: str) -> ParseLogResponse:
+async def _run_parse(text: str, db: Session | None = None) -> ParseLogResponse:
     raw_items, conf, err = await parse_meal_description(text)
     if err:
         return ParseLogResponse(
@@ -83,7 +83,7 @@ async def _run_parse(text: str) -> ParseLogResponse:
         if not name:
             continue
         qty = raw.get("quantity")
-        fi, from_api = await enrich_item(name, qty)
+        fi, from_api = await enrich_item(name, qty, db=db)
         out_items.append(fi)
         if not from_api:
             warnings.append(fi.name)
@@ -98,10 +98,10 @@ async def _run_parse(text: str) -> ParseLogResponse:
 
 
 @router.post("/parse", response_model=ParseLogResponse)
-async def parse_log(body: ParseLogRequest, user: User = Depends(get_current_user)):
+async def parse_log(body: ParseLogRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     timeout = max(settings.nlp_timeout_seconds, 12.0)
     try:
-        return await asyncio.wait_for(_run_parse(body.text), timeout=timeout)
+        return await asyncio.wait_for(_run_parse(body.text, db=db), timeout=timeout)
     except asyncio.TimeoutError:
         return ParseLogResponse(
             items=[],

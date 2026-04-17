@@ -41,3 +41,22 @@ class FoodLogEntry(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="entries")
+
+
+class FoodItemsCache(Base):
+    __tablename__ = "food_items_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    normalized_name = Column(String(255), unique=True, index=True, nullable=False)
+    fdc_id = Column(Integer, nullable=True)
+    calories_per100g = Column(Integer, default=0)
+    protein_g_per100g = Column(Float, default=0.0)
+    carbs_g_per100g = Column(Float, default=0.0)
+    fat_g_per100g = Column(Float, default=0.0)
+    saturated_fat_g_per100g = Column(Float, default=0.0)
+    cholesterol_mg_per100g = Column(Float, default=0.0)
+    sodium_mg_per100g = Column(Float, default=0.0)
+    fiber_g_per100g = Column(Float, default=0.0)
+    sugars_g_per100g = Column(Float, default=0.0)
+    added_sugars_g_per100g = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)

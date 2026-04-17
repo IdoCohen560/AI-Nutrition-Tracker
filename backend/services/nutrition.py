@@ -1,7 +1,13 @@
+import logging
+
 import httpx
+from sqlalchemy.orm import Session
 
 from config import settings
+from models import FoodItemsCache
 from schemas import FoodItemOut
+
+logger = logging.getLogger(__name__)
 
 # Rough defaults when no API (kcal per typical serving label)
 # Tuple: (cal, protein_g, carbs_g, fat_g, sat_fat_g, chol_mg, sodium_mg, fiber_g, sugars_g, added_sugars_g)
@@ -53,7 +59,38 @@ def _default_for_name(name: str) -> FoodItemOut:
     )
 
 
-async def lookup_usda(query: str) -> FoodItemOut | None:
+def _normalize_name(name: str) -> str:
+    return name.strip().lower()
+
+
+def _cache_to_food_item(cached: FoodItemsCache) -> FoodItemOut:
+    return FoodItemOut(
+        name=cached.normalized_name,
+        quantity="per 100g (approx)",
+        calories=cached.calories_per100g or 0,
+        protein_g=cached.protein_g_per100g or 0.0,
+        carbs_g=cached.carbs_g_per100g or 0.0,
+        fat_g=cached.fat_g_per100g or 0.0,
+        saturated_fat_g=cached.saturated_fat_g_per100g or 0.0,
+        cholesterol_mg=cached.cholesterol_mg_per100g or 0.0,
+        sodium_mg=cached.sodium_mg_per100g or 0.0,
+        fiber_g=cached.fiber_g_per100g or 0.0,
+        sugars_g=cached.sugars_g_per100g or 0.0,
+        added_sugars_g=cached.added_sugars_g_per100g or 0.0,
+    )
+
+
+async def lookup_usda(query: str, db: Session | None = None) -> FoodItemOut | None:
+    normalized = _normalize_name(query)
+
+    if db is not None:
+        cached = db.query(FoodItemsCache).filter(
+            FoodItemsCache.normalized_name == normalized
+        ).first()
+        if cached:
+            logger.info("USDA cache hit for '%s'", normalized)
+            return _cache_to_food_item(cached)
+
     if not settings.usda_api_key:
         return None
     url = "https://api.nal.usda.gov/fdc/v1/foods/search"
@@ -69,8 +106,6 @@ async def lookup_usda(query: str) -> FoodItemOut | None:
             f0 = foods[0]
             desc = f0.get("description", query)
             nutrients = {n["nutrientId"]: n["value"] for n in f0.get("foodNutrients", [])}
-            # FDC nutrient IDs: 1008 energy, 1003 protein, 1005 carb, 1004 fat,
-            # 1258 sat fat, 1253 cholesterol, 1093 sodium, 1079 fiber, 1063 sugars, 1235 added sugars
             cal = int(nutrients.get(1008, 100) or 100)
             protein = float(nutrients.get(1003, 5) or 5)
             carbs = float(nutrients.get(1005, 15) or 15)
@@ -81,6 +116,31 @@ async def lookup_usda(query: str) -> FoodItemOut | None:
             fiber = float(nutrients.get(1079, 0) or 0)
             sugars = float(nutrients.get(1063, 0) or 0)
             added_sugars = float(nutrients.get(1235, 0) or 0)
+
+            fdc_id = f0.get("fdcId")
+
+            if db is not None:
+                try:
+                    cache_entry = FoodItemsCache(
+                        normalized_name=normalized,
+                        fdc_id=fdc_id,
+                        calories_per100g=max(cal, 0),
+                        protein_g_per100g=protein,
+                        carbs_g_per100g=carbs,
+                        fat_g_per100g=fat,
+                        saturated_fat_g_per100g=sat_fat,
+                        cholesterol_mg_per100g=cholesterol,
+                        sodium_mg_per100g=sodium,
+                        fiber_g_per100g=fiber,
+                        sugars_g_per100g=sugars,
+                        added_sugars_g_per100g=added_sugars,
+                    )
+                    db.add(cache_entry)
+                    db.commit()
+                    logger.info("USDA cache stored for '%s' (fdc_id=%s)", normalized, fdc_id)
+                except Exception:
+                    db.rollback()
+
             return FoodItemOut(
                 name=desc[:120],
                 quantity="per 100g (approx)",
@@ -99,11 +159,11 @@ async def lookup_usda(query: str) -> FoodItemOut | None:
         return None
 
 
-async def enrich_item(name: str, quantity: str | None) -> tuple[FoodItemOut, bool]:
+async def enrich_item(name: str, quantity: str | None, db: Session | None = None) -> tuple[FoodItemOut, bool]:
     """
     Returns (FoodItemOut, from_api) — from_api False means heuristic/default used (UC-1 E2 path).
     """
-    usda = await lookup_usda(name)
+    usda = await lookup_usda(name, db=db)
     if usda:
         if quantity:
             usda = usda.model_copy(update={"quantity": quantity})

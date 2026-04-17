@@ -22,6 +22,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def _startup():
+    from scripts.migrate_v2 import run as migrate_v2
+    migrate_v2()
     Base.metadata.create_all(bind=engine)
 
 

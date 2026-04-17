@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'ai_food_tracker_token';
+const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -16,7 +17,8 @@ export async function api(path, options = {}) {
   }
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(path, { ...options, headers });
+  const url = /^https?:\/\//.test(path) ? path : `${API_BASE}${path}`;
+  const res = await fetch(url, { ...options, headers });
   const text = await res.text();
   let data = null;
   if (text) {

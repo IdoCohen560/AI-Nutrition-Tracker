@@ -18,6 +18,7 @@ USER_COLUMNS = [
     ("favorite_foods", "TEXT", "'[]'"),
     ("fast_start", "TIMESTAMP", "NULL"),
     ("fast_target_hours", "FLOAT", "NULL"),
+    ("water_goal_cups", "INTEGER", "8"),
 ]
 
 

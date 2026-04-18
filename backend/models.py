@@ -32,6 +32,7 @@ class User(Base):
     favorite_foods = Column(Text, default="[]")          # JSON array of food names
     fast_start = Column(DateTime, nullable=True)         # active fast started at
     fast_target_hours = Column(Float, nullable=True)     # current fast target
+    water_goal_cups = Column(Integer, default=8, nullable=False)
 
     entries = relationship("FoodLogEntry", back_populates="user", cascade="all, delete-orphan")
 

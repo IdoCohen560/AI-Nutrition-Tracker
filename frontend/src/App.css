@@ -614,3 +614,17 @@ ul.entry-list > li.entry-row {
 .chip-recent { display: inline-flex; align-items: center; gap: 2px; }
 .star { background: none; border: none; color: var(--accent-2); cursor: pointer; font-size: 1.1rem; padding: 0 2px; }
 .btn.ghost.active { color: var(--danger); border-color: var(--danger); }
+
+/* LogFood layout fixes */
+.quick-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.4rem !important;
+  align-items: center !important;
+  margin: 0.5rem 0 !important;
+  width: 100%;
+}
+.quick-row .chip { font-size: 0.8rem; padding: 0.3rem 0.7rem; }
+.chip-recent { display: inline-flex; align-items: center; gap: 2px; }
+.btn-row { display: flex !important; flex-wrap: wrap !important; gap: 0.75rem !important; margin-top: 1rem !important; align-items: center; }
+.btn-row .btn { flex: 0 0 auto; }

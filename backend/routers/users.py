@@ -49,6 +49,7 @@ def _to_out(user: User) -> UserOut:
         notes=user.notes or "",
         bmi=_compute_bmi(user.height_cm, user.weight_kg),
         use_metric=bool(user.use_metric) if user.use_metric is not None else True,
+        water_goal_cups=int(user.water_goal_cups) if user.water_goal_cups else 8,
     )
 
 

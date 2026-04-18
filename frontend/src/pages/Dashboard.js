@@ -36,7 +36,7 @@ function todayISO() {
 
 export default function Dashboard() {
   const [date] = useState(todayISO());
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [range, setRange] = useState('daily');
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -86,7 +86,7 @@ export default function Dashboard() {
       <StatsCard refreshKey={data?.calories?.consumed || 0} />
 
       <div className="grid-2">
-        <WaterCard />
+        <WaterCard user={user} onUpdated={refreshUser} />
         <FastingCard />
       </div>
 

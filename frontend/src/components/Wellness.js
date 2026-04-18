@@ -71,21 +71,33 @@ export function WeightCard({ user, onSaved }) {
 }
 
 // --------------- Water ---------------
-export function WaterCard({ goal = 8 }) {
+export function WaterCard({ user, onUpdated }) {
+  const goal = user?.water_goal_cups || 8;
   const [cups, setCups] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
 
   const load = useCallback(async () => {
-    try { setCups((await api(`/water?tz=${tz()}`)).cups); } catch { /* ignore */ }
+    try { setCups((await api(`/water?tz=${tz()}`)).cups); }
+    catch (e) { setErr(e.message); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
   async function adjust(delta) {
     setBusy(true);
+    setErr('');
     try {
       const r = await api('/water', { method: 'POST', body: JSON.stringify({ delta, tz_offset: tz() }) });
       setCups(r.cups);
-    } finally { setBusy(false); }
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function changeGoal(newGoal) {
+    try {
+      await api('/users/me', { method: 'PATCH', body: JSON.stringify({ water_goal_cups: newGoal }) });
+      onUpdated && onUpdated();
+    } catch (e) { setErr(e.message); }
   }
 
   const pct = Math.min(100, (cups / goal) * 100);
@@ -105,10 +117,19 @@ export function WaterCard({ goal = 8 }) {
       <div className="progress-track" style={{ marginTop: '0.5rem' }}>
         <div className="progress-fill" style={{ width: `${pct}%` }} />
       </div>
+      {err && <div className="error-banner">{err}</div>}
       <div className="btn-row">
-        <button type="button" className="btn ghost small" disabled={busy || cups <= 0} onClick={() => adjust(-1)}>− 1 cup</button>
+        <button type="button" className="btn ghost small" disabled={busy || cups <= 0} onClick={() => adjust(-1)}>− 1</button>
         <button type="button" className="btn primary small" disabled={busy} onClick={() => adjust(1)}>+ 1 cup</button>
       </div>
+      <label className="muted small" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+        Daily goal:
+        <select value={goal} onChange={(e) => changeGoal(Number(e.target.value))} style={{ width: 'auto', padding: '0.25rem 0.5rem' }}>
+          {[4,5,6,7,8,9,10,11,12,14,16].map((n) => (
+            <option key={n} value={n}>{n} cups{n === 8 ? ' (recommended)' : ''}</option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -125,14 +146,15 @@ export function FastingCard() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (!status.active) return;
-    const id = setInterval(() => setNow(Date.now()), 60_000);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [status.active]);
 
-  const elapsedHrs = useMemo(() => {
+  const elapsedSec = useMemo(() => {
     if (!status.active || !status.started_at) return 0;
-    return (now - new Date(status.started_at).getTime()) / 3_600_000;
+    return Math.max(0, (now - new Date(status.started_at).getTime()) / 1000);
   }, [status, now]);
+  const elapsedHrs = elapsedSec / 3600;
 
   async function start() {
     const r = await api('/fast/start', { method: 'POST', body: JSON.stringify({ target_hours: target }) });
@@ -167,12 +189,18 @@ export function FastingCard() {
 
   const tgt = status.target_hours || target;
   const pct = Math.min(100, (elapsedHrs / tgt) * 100);
-  const remaining = Math.max(0, tgt - elapsedHrs);
+  const remainingSec = Math.max(0, tgt * 3600 - elapsedSec);
+  const fmt = (s) => {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = Math.floor(s % 60);
+    return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
   return (
     <div className="card">
-      <div className="card-header"><h2>Fasting</h2></div>
-      <p className="stat-big" style={{ margin: 0 }}>{Math.floor(elapsedHrs)}h {Math.round((elapsedHrs % 1) * 60)}m</p>
-      <p className="muted small">{remaining > 0 ? `${remaining.toFixed(1)} h to ${tgt} h goal` : `Goal reached! +${(elapsedHrs - tgt).toFixed(1)} h`}</p>
+      <div className="card-header"><h2>Fasting</h2><span className="muted small">{tgt}h goal</span></div>
+      <p className="stat-big" style={{ margin: 0, fontVariantNumeric: 'tabular-nums' }}>{fmt(elapsedSec)}</p>
+      <p className="muted small">{remainingSec > 0 ? `${fmt(remainingSec)} remaining` : `Goal reached! +${fmt(elapsedSec - tgt * 3600)} over`}</p>
       <div className="progress-track"><div className="progress-fill" style={{ width: `${pct}%` }} /></div>
       <div className="btn-row">
         <button type="button" className="btn danger small" onClick={stop}>End fast</button>

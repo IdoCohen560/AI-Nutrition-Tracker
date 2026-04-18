@@ -83,9 +83,9 @@ async def _run_parse(text: str, db: Session | None = None) -> ParseLogResponse:
         if not name:
             continue
         qty = raw.get("quantity")
-        fi, from_api = await enrich_item(name, qty, db=db)
+        fi, source = await enrich_item(name, qty, db=db)
         out_items.append(fi)
-        if not from_api:
+        if source == "generic":
             warnings.append(fi.name)
     requires_confirmation = conf < 0.8
     return ParseLogResponse(

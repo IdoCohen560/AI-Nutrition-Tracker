@@ -1,4 +1,5 @@
 import logging
+import re
 
 import httpx
 from sqlalchemy.orm import Session
@@ -9,78 +10,190 @@ from schemas import FoodItemOut
 
 logger = logging.getLogger(__name__)
 
-# Rough defaults when no API (kcal per typical serving label)
+# All nutrition values below are PER 100 GRAMS (USDA convention).
 # Tuple: (cal, protein_g, carbs_g, fat_g, sat_fat_g, chol_mg, sodium_mg, fiber_g, sugars_g, added_sugars_g)
-_KEYWORD_DEFAULTS: dict[str, tuple[int, float, float, float, float, float, float, float, float, float]] = {
-    "egg": (78, 6.3, 0.6, 5.3, 1.6, 186.0, 62.0, 0.0, 0.6, 0.0),
-    "eggs": (78, 6.3, 0.6, 5.3, 1.6, 186.0, 62.0, 0.0, 0.6, 0.0),
-    "toast": (80, 3.0, 14.0, 1.0, 0.2, 0.0, 140.0, 0.8, 1.5, 0.0),
-    "bread": (80, 3.0, 14.0, 1.0, 0.2, 0.0, 140.0, 0.8, 1.5, 0.0),
-    "chicken": (231, 43.5, 0.0, 5.0, 1.3, 125.0, 104.0, 0.0, 0.0, 0.0),
-    "rice": (200, 4.0, 45.0, 0.5, 0.1, 0.0, 1.0, 0.6, 0.1, 0.0),
-    "apple": (95, 0.5, 25.0, 0.3, 0.1, 0.0, 2.0, 4.4, 19.0, 0.0),
-    "banana": (105, 1.3, 27.0, 0.4, 0.1, 0.0, 1.0, 3.1, 14.0, 0.0),
-    "coffee": (5, 0.3, 0.0, 0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0),
-    "milk": (150, 8.0, 12.0, 8.0, 4.6, 24.0, 105.0, 0.0, 12.0, 0.0),
-    "yogurt": (150, 12.0, 17.0, 4.0, 2.5, 15.0, 80.0, 0.0, 12.0, 0.0),
-    "salad": (50, 3.0, 8.0, 1.5, 0.2, 0.0, 30.0, 2.5, 3.0, 0.0),
-    "pizza": (285, 12.0, 36.0, 10.0, 4.5, 22.0, 640.0, 2.0, 4.0, 0.0),
-    "burger": (540, 25.0, 40.0, 30.0, 11.0, 80.0, 790.0, 1.5, 8.0, 3.0),
-    "oatmeal": (150, 5.0, 27.0, 3.0, 0.5, 0.0, 5.0, 4.0, 1.0, 0.0),
-    "water": (0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+_KEYWORD_PER100G: dict[str, tuple[float, float, float, float, float, float, float, float, float, float]] = {
+    "egg":     (143, 12.6, 0.7, 9.5, 3.1, 372.0, 142.0, 0.0, 0.4, 0.0),
+    "eggs":    (143, 12.6, 0.7, 9.5, 3.1, 372.0, 142.0, 0.0, 0.4, 0.0),
+    "toast":   (265, 9.0, 49.0, 3.2, 0.7, 0.0, 491.0, 2.4, 5.7, 0.0),
+    "bread":   (265, 9.0, 49.0, 3.2, 0.7, 0.0, 491.0, 2.4, 5.7, 0.0),
+    "chicken": (165, 31.0, 0.0, 3.6, 1.0, 85.0, 74.0, 0.0, 0.0, 0.0),
+    "rice":    (130, 2.7, 28.0, 0.3, 0.1, 0.0, 1.0, 0.4, 0.1, 0.0),
+    "apple":   (52, 0.3, 14.0, 0.2, 0.0, 0.0, 1.0, 2.4, 10.4, 0.0),
+    "banana":  (89, 1.1, 23.0, 0.3, 0.1, 0.0, 1.0, 2.6, 12.2, 0.0),
+    "coffee":  (2, 0.3, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0),
+    "milk":    (61, 3.2, 4.8, 3.3, 1.9, 10.0, 43.0, 0.0, 5.1, 0.0),
+    "yogurt":  (61, 3.5, 4.7, 3.3, 2.1, 13.0, 46.0, 0.0, 4.7, 0.0),
+    "salad":   (20, 1.4, 3.6, 0.2, 0.0, 0.0, 28.0, 1.8, 1.9, 0.0),
+    "pizza":   (266, 11.0, 33.0, 10.0, 4.5, 17.0, 598.0, 2.3, 3.6, 0.0),
+    "burger":  (254, 17.0, 14.0, 15.0, 5.6, 36.0, 396.0, 1.0, 3.5, 1.0),
+    "oatmeal": (71, 2.5, 12.0, 1.5, 0.3, 0.0, 4.0, 1.7, 0.4, 0.0),
+    "water":   (0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
 }
 
+# Typical serving size in grams — used when quantity is absent or count-based (1 egg, 1 slice).
+_TYPICAL_SERVING_G: dict[str, float] = {
+    "egg": 50, "eggs": 50,
+    "toast": 30, "bread": 30,
+    "chicken": 100,
+    "rice": 158,       # 1 cup cooked
+    "apple": 182,      # 1 medium
+    "banana": 118,
+    "coffee": 240,     # 1 cup
+    "milk": 244,
+    "yogurt": 245,
+    "salad": 85,       # 1 cup greens
+    "pizza": 107,      # 1 slice
+    "burger": 226,
+    "oatmeal": 234,    # 1 cup cooked
+    "water": 240,
+}
 
-def _default_for_name(name: str) -> FoodItemOut:
-    lower = name.lower()
-    for key, (cal, p, c, f, sf, chol, sod, fib, sug, asug) in _KEYWORD_DEFAULTS.items():
-        if key in lower:
-            return FoodItemOut(
-                name=name.strip() or key,
-                quantity=None,
-                calories=cal,
-                protein_g=p,
-                carbs_g=c,
-                fat_g=f,
-                saturated_fat_g=sf,
-                cholesterol_mg=chol,
-                sodium_mg=sod,
-                fiber_g=fib,
-                sugars_g=sug,
-                added_sugars_g=asug,
-            )
-    return FoodItemOut(
-        name=name.strip() or "food",
-        quantity=None,
-        calories=120,
-        protein_g=5.0,
-        carbs_g=15.0,
-        fat_g=4.0,
-    )
+_GENERIC_PER100G = (120.0, 5.0, 15.0, 4.0, 1.0, 10.0, 100.0, 1.0, 2.0, 0.0)
+_GENERIC_SERVING_G = 100.0
+
+# Mass/volume unit → grams (rough). Volume assumes water-ish density unless food-specific cup weight is set.
+_UNIT_TO_G: dict[str, float] = {
+    "g": 1.0, "gram": 1.0, "grams": 1.0, "gm": 1.0,
+    "kg": 1000.0, "kilogram": 1000.0, "kilograms": 1000.0,
+    "mg": 0.001,
+    "oz": 28.3495, "ounce": 28.3495, "ounces": 28.3495,
+    "lb": 453.592, "lbs": 453.592, "pound": 453.592, "pounds": 453.592,
+    "ml": 1.0, "milliliter": 1.0, "milliliters": 1.0,
+    "l": 1000.0, "liter": 1000.0, "liters": 1000.0,
+    "tbsp": 15.0, "tablespoon": 15.0, "tablespoons": 15.0,
+    "tsp": 5.0, "teaspoon": 5.0, "teaspoons": 5.0,
+}
+
+# Food-specific cup weights (cooked/prepared). Fallback is 240g (water-ish).
+_CUP_G_PER_FOOD: dict[str, float] = {
+    "rice": 158, "oatmeal": 234, "milk": 244, "yogurt": 245,
+    "coffee": 240, "water": 240, "salad": 85,
+}
+
+# Count-based units use per-food typical serving weight.
+_COUNT_UNITS = {"slice", "slices", "piece", "pieces", "serving", "servings",
+                "medium", "large", "small", "whole", "item", "items"}
 
 
 def _normalize_name(name: str) -> str:
     return name.strip().lower()
 
 
-def _cache_to_food_item(cached: FoodItemsCache) -> FoodItemOut:
+def _keyword_hit(name: str) -> str | None:
+    """Return the matching keyword from our per-100g table, or None."""
+    lower = name.lower()
+    for key in _KEYWORD_PER100G:
+        if key in lower:
+            return key
+    return None
+
+
+def _serving_grams_for(name: str) -> float:
+    key = _keyword_hit(name)
+    if key and key in _TYPICAL_SERVING_G:
+        return _TYPICAL_SERVING_G[key]
+    return _GENERIC_SERVING_G
+
+
+def _cup_grams_for(name: str) -> float:
+    key = _keyword_hit(name)
+    if key and key in _CUP_G_PER_FOOD:
+        return _CUP_G_PER_FOOD[key]
+    return 240.0
+
+
+def parse_quantity_to_grams(qty_str: str | None, name: str) -> float:
+    """
+    Convert a free-form quantity string ("2 cups", "3 eggs", "100g", "1 medium apple")
+    into grams. If no quantity or unparseable, returns the typical serving weight for the food.
+    """
+    if not qty_str:
+        return _serving_grams_for(name)
+    q = str(qty_str).strip().lower()
+    if not q:
+        return _serving_grams_for(name)
+
+    # Extract leading number (supports "1.5", "1/2", "half", "a"/"an")
+    num_match = re.match(r"^\s*(\d+/\d+|\d+(?:\.\d+)?)\s*", q)
+    if num_match:
+        raw = num_match.group(1)
+        if "/" in raw:
+            a, b = raw.split("/", 1)
+            try:
+                count = float(a) / float(b) if float(b) else 1.0
+            except ValueError:
+                count = 1.0
+        else:
+            count = float(raw)
+        rest = q[num_match.end():].strip()
+    elif q.startswith(("half ", "a half ")):
+        count = 0.5
+        rest = re.sub(r"^(a\s+)?half\s+", "", q)
+    elif q.startswith(("a ", "an ", "one ")):
+        count = 1.0
+        rest = re.sub(r"^(a|an|one)\s+", "", q)
+    else:
+        count = 1.0
+        rest = q
+
+    # Take the first word as unit candidate
+    unit_match = re.match(r"^([a-z]+)", rest)
+    unit = unit_match.group(1) if unit_match else ""
+
+    # Mass / volume units
+    if unit in _UNIT_TO_G:
+        return count * _UNIT_TO_G[unit]
+    # Cup is food-specific
+    if unit in ("cup", "cups"):
+        return count * _cup_grams_for(name)
+    # Count units use typical serving
+    if unit in _COUNT_UNITS or unit == "":
+        return count * _serving_grams_for(name)
+    # Unknown unit → treat as count
+    return count * _serving_grams_for(name)
+
+
+def _scale_per100g(per100: tuple, grams: float) -> tuple:
+    factor = grams / 100.0
+    return tuple(round(v * factor, 2) for v in per100)
+
+
+def _food_item_from_per100g(name: str, quantity: str | None, per100: tuple, grams: float) -> FoodItemOut:
+    cal, p, c, f, sf, chol, sod, fib, sug, asug = _scale_per100g(per100, grams)
     return FoodItemOut(
-        name=cached.normalized_name,
-        quantity="per 100g (approx)",
-        calories=cached.calories_per100g or 0,
-        protein_g=cached.protein_g_per100g or 0.0,
-        carbs_g=cached.carbs_g_per100g or 0.0,
-        fat_g=cached.fat_g_per100g or 0.0,
-        saturated_fat_g=cached.saturated_fat_g_per100g or 0.0,
-        cholesterol_mg=cached.cholesterol_mg_per100g or 0.0,
-        sodium_mg=cached.sodium_mg_per100g or 0.0,
-        fiber_g=cached.fiber_g_per100g or 0.0,
-        sugars_g=cached.sugars_g_per100g or 0.0,
-        added_sugars_g=cached.added_sugars_g_per100g or 0.0,
+        name=name.strip() or "food",
+        quantity=quantity or f"{grams:g}g",
+        calories=int(round(cal)),
+        protein_g=p,
+        carbs_g=c,
+        fat_g=f,
+        saturated_fat_g=sf,
+        cholesterol_mg=chol,
+        sodium_mg=sod,
+        fiber_g=fib,
+        sugars_g=sug,
+        added_sugars_g=asug,
     )
 
 
-async def lookup_usda(query: str, db: Session | None = None) -> FoodItemOut | None:
+def _cache_per100g_tuple(cached: FoodItemsCache) -> tuple:
+    return (
+        float(cached.calories_per100g or 0),
+        float(cached.protein_g_per100g or 0),
+        float(cached.carbs_g_per100g or 0),
+        float(cached.fat_g_per100g or 0),
+        float(cached.saturated_fat_g_per100g or 0),
+        float(cached.cholesterol_mg_per100g or 0),
+        float(cached.sodium_mg_per100g or 0),
+        float(cached.fiber_g_per100g or 0),
+        float(cached.sugars_g_per100g or 0),
+        float(cached.added_sugars_g_per100g or 0),
+    )
+
+
+async def lookup_usda_per100g(query: str, db: Session | None = None) -> tuple[tuple, str] | None:
+    """Returns (per100g_tuple, canonical_name) or None."""
     normalized = _normalize_name(query)
 
     if db is not None:
@@ -89,7 +202,7 @@ async def lookup_usda(query: str, db: Session | None = None) -> FoodItemOut | No
         ).first()
         if cached:
             logger.info("USDA cache hit for '%s'", normalized)
-            return _cache_to_food_item(cached)
+            return _cache_per100g_tuple(cached), cached.normalized_name
 
     if not settings.usda_api_key:
         return None
@@ -106,17 +219,18 @@ async def lookup_usda(query: str, db: Session | None = None) -> FoodItemOut | No
             f0 = foods[0]
             desc = f0.get("description", query)
             nutrients = {n["nutrientId"]: n["value"] for n in f0.get("foodNutrients", [])}
-            cal = int(nutrients.get(1008, 100) or 100)
-            protein = float(nutrients.get(1003, 5) or 5)
-            carbs = float(nutrients.get(1005, 15) or 15)
-            fat = float(nutrients.get(1004, 5) or 5)
-            sat_fat = float(nutrients.get(1258, 0) or 0)
-            cholesterol = float(nutrients.get(1253, 0) or 0)
-            sodium = float(nutrients.get(1093, 0) or 0)
-            fiber = float(nutrients.get(1079, 0) or 0)
-            sugars = float(nutrients.get(1063, 0) or 0)
-            added_sugars = float(nutrients.get(1235, 0) or 0)
-
+            per100 = (
+                float(nutrients.get(1008, 100) or 100),
+                float(nutrients.get(1003, 5) or 5),
+                float(nutrients.get(1005, 15) or 15),
+                float(nutrients.get(1004, 5) or 5),
+                float(nutrients.get(1258, 0) or 0),
+                float(nutrients.get(1253, 0) or 0),
+                float(nutrients.get(1093, 0) or 0),
+                float(nutrients.get(1079, 0) or 0),
+                float(nutrients.get(1063, 0) or 0),
+                float(nutrients.get(1235, 0) or 0),
+            )
             fdc_id = f0.get("fdcId")
 
             if db is not None:
@@ -124,16 +238,16 @@ async def lookup_usda(query: str, db: Session | None = None) -> FoodItemOut | No
                     cache_entry = FoodItemsCache(
                         normalized_name=normalized,
                         fdc_id=fdc_id,
-                        calories_per100g=max(cal, 0),
-                        protein_g_per100g=protein,
-                        carbs_g_per100g=carbs,
-                        fat_g_per100g=fat,
-                        saturated_fat_g_per100g=sat_fat,
-                        cholesterol_mg_per100g=cholesterol,
-                        sodium_mg_per100g=sodium,
-                        fiber_g_per100g=fiber,
-                        sugars_g_per100g=sugars,
-                        added_sugars_g_per100g=added_sugars,
+                        calories_per100g=max(int(per100[0]), 0),
+                        protein_g_per100g=per100[1],
+                        carbs_g_per100g=per100[2],
+                        fat_g_per100g=per100[3],
+                        saturated_fat_g_per100g=per100[4],
+                        cholesterol_mg_per100g=per100[5],
+                        sodium_mg_per100g=per100[6],
+                        fiber_g_per100g=per100[7],
+                        sugars_g_per100g=per100[8],
+                        added_sugars_g_per100g=per100[9],
                     )
                     db.add(cache_entry)
                     db.commit()
@@ -141,34 +255,40 @@ async def lookup_usda(query: str, db: Session | None = None) -> FoodItemOut | No
                 except Exception:
                     db.rollback()
 
-            return FoodItemOut(
-                name=desc[:120],
-                quantity="per 100g (approx)",
-                calories=max(cal, 0),
-                protein_g=protein,
-                carbs_g=carbs,
-                fat_g=fat,
-                saturated_fat_g=sat_fat,
-                cholesterol_mg=cholesterol,
-                sodium_mg=sodium,
-                fiber_g=fiber,
-                sugars_g=sugars,
-                added_sugars_g=added_sugars,
-            )
+            return per100, str(desc)[:120]
     except Exception:
         return None
 
 
-async def enrich_item(name: str, quantity: str | None, db: Session | None = None) -> tuple[FoodItemOut, bool]:
+def _default_for_name(name: str) -> FoodItemOut:
+    """Synchronous default lookup — returns estimated nutrition for one typical serving.
+    Used by recommendations engine. Scales per-100g data to typical serving weight.
     """
-    Returns (FoodItemOut, from_api) — from_api False means heuristic/default used (UC-1 E2 path).
+    grams = _serving_grams_for(name)
+    key = _keyword_hit(name)
+    per100 = _KEYWORD_PER100G[key] if key else _GENERIC_PER100G
+    return _food_item_from_per100g(name, None, per100, grams)
+
+
+async def enrich_item(name: str, quantity: str | None, db: Session | None = None) -> tuple[FoodItemOut, str]:
     """
-    usda = await lookup_usda(name, db=db)
+    Returns (FoodItemOut, source) where source is one of:
+      - "usda":    data from USDA (or cache)
+      - "keyword": matched one of our known keyword foods
+      - "generic": true fallback, nutrition is a guess (warn the user)
+    """
+    grams = parse_quantity_to_grams(quantity, name)
+
+    usda = await lookup_usda_per100g(name, db=db)
     if usda:
-        if quantity:
-            usda = usda.model_copy(update={"quantity": quantity})
-        return usda, True
-    base = _default_for_name(name)
-    if quantity:
-        base = base.model_copy(update={"quantity": quantity})
-    return base, False
+        per100, canonical = usda
+        item = _food_item_from_per100g(canonical or name, quantity, per100, grams)
+        return item, "usda"
+
+    key = _keyword_hit(name)
+    if key:
+        item = _food_item_from_per100g(name, quantity, _KEYWORD_PER100G[key], grams)
+        return item, "keyword"
+
+    item = _food_item_from_per100g(name, quantity, _GENERIC_PER100G, grams)
+    return item, "generic"

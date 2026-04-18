@@ -11,7 +11,12 @@ def _heuristic_parse(text: str) -> tuple[list[dict], float]:
     t = text.strip()
     if not t:
         return [], 0.0
-    parts = re.split(r"\s*,\s*|\s+and\s+|\s*;\s*", t, flags=re.IGNORECASE)
+    # Split on commas, "and", "with", "plus", semicolons, ampersands, "+", and line breaks.
+    parts = re.split(
+        r"\s*,\s*|\s+(?:and|with|plus)\s+|\s*[;&\n]\s*|\s*\+\s*",
+        t,
+        flags=re.IGNORECASE,
+    )
     parts = [p.strip() for p in parts if p.strip()]
     if not parts:
         parts = [t]
@@ -48,7 +53,10 @@ async def parse_with_openai(text: str) -> tuple[list[dict], float, str | None]:
     }
     system = (
         "You extract food items from a meal description. "
-        'Return JSON: {"items":[{"name":"food name","quantity":"optional string"}],'
+        "Split compound meals into individual foods (e.g. 'eggs with toast' => two items). "
+        "Do NOT split single-dish compounds (e.g. 'peanut butter sandwich' is one item). "
+        "Preserve explicit quantities (e.g. '3 eggs', '2 cups rice', '100g chicken'). "
+        'Return JSON: {"items":[{"name":"food name","quantity":"count + unit, e.g. \\"3\\", \\"2 cups\\", \\"100g\\" or null"}],'
         '"confidence":0.0-1.0}. Use confidence 0.9+ if clear, lower if ambiguous.'
     )
     payload = {

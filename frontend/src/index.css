@@ -1,20 +1,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;700&family=Source+Sans+3:wght@400;600&display=swap');
 
 :root {
-  --bg: #f4f0e8;
-  --surface: #fffdf8;
-  --text: #1c1b19;
-  --muted: #5c574e;
-  --border: #dcd4c8;
-  --accent: #2d6a5d;
-  --accent-hover: #245548;
-  --accent-2: #c45c3e;
-  --danger: #a33f3f;
-  --chart-protein: #2d6a5d;
-  --chart-carbs: #c45c3e;
-  --chart-fat: #d4a03c;
-  --radius: 12px;
-  --shadow: 0 8px 28px rgba(28, 27, 25, 0.08);
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #273449;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #334155;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-2: #8b5cf6;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --chart-protein: #8b5cf6;
+  --chart-carbs: #38bdf8;
+  --chart-fat: #f59e0b;
+  --radius: 16px;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
 
 * {

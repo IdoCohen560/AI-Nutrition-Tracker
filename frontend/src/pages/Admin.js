@@ -88,24 +88,23 @@ export default function Admin() {
                   <td style={{ textAlign: 'right' }}>
                     {locked ? (
                       <span className="muted small">{isSuper ? 'super admin' : 'this is you'}</span>
-                    ) : u.role === 'admin' ? (
-                      <button
-                        type="button"
-                        className="btn danger ghost small"
-                        disabled={busyId === u.id}
-                        onClick={() => setRole(u, 'user')}
-                      >
-                        {busyId === u.id ? 'Demoting…' : 'Demote'}
-                      </button>
                     ) : (
-                      <button
-                        type="button"
-                        className="btn primary small"
-                        disabled={busyId === u.id}
-                        onClick={() => setRole(u, 'admin')}
-                      >
-                        {busyId === u.id ? 'Promoting…' : 'Promote to admin'}
-                      </button>
+                      (() => {
+                        const isAdmin = u.role === 'admin';
+                        const nextRole = isAdmin ? 'user' : 'admin';
+                        const idle = isAdmin ? 'Demote to user' : 'Promote to admin';
+                        const busy = isAdmin ? 'Demoting…' : 'Promoting…';
+                        return (
+                          <button
+                            type="button"
+                            className="btn primary small"
+                            disabled={busyId === u.id}
+                            onClick={() => setRole(u, nextRole)}
+                          >
+                            {busyId === u.id ? busy : idle}
+                          </button>
+                        );
+                      })()
                     )}
                   </td>
                 </tr>

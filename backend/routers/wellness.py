@@ -150,9 +150,14 @@ def _fast_status(user: User) -> FastStatus:
     if not user.fast_start:
         return FastStatus(active=False)
     elapsed = (datetime.utcnow() - user.fast_start).total_seconds() / 3600.0
+    # Append "Z" so the frontend parses it as UTC, not local time.
+    # Stored value is naive UTC (via datetime.utcnow()), so this is correct.
+    started_iso = user.fast_start.isoformat()
+    if not started_iso.endswith("Z") and "+" not in started_iso[10:]:
+        started_iso += "Z"
     return FastStatus(
         active=True,
-        started_at=user.fast_start.isoformat(),
+        started_at=started_iso,
         target_hours=user.fast_target_hours,
         elapsed_hours=round(elapsed, 2),
     )

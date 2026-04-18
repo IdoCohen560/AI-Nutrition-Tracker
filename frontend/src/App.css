@@ -428,3 +428,90 @@
 .role-user { background: #e8e4dc; color: var(--muted); }
 .role-admin { background: var(--accent); color: #fff; }
 .role-super_admin { background: var(--accent-2); color: #fff; }
+
+/* === Layout hardening: prevent text overlap site-wide === */
+
+/* Top nav: allow nav-links to scroll horizontally on small screens */
+.top-nav { gap: 0.75rem 1rem; }
+.brand { min-width: 0; }
+.brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-links { row-gap: 0.5rem; }
+@media (max-width: 640px) {
+  .top-nav { padding: 0.75rem 1rem; }
+  .nav-links { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+  .nav-links a, .nav-links button { white-space: nowrap; }
+}
+
+/* Cards never overflow content */
+.card { overflow: hidden; }
+
+/* Card headers (h2 + button) must wrap, not collide */
+.card-header { flex-wrap: wrap; row-gap: 0.5rem; }
+.card-header h2 { min-width: 0; word-break: break-word; }
+
+/* Filter rows */
+.filter-row { row-gap: 0.75rem; }
+.filter-row label { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+.filter-row input[type="date"] { min-width: 0; max-width: 100%; }
+
+/* Range toggles: grow to fit text, never overlap */
+.range-toggle { width: 100%; max-width: 360px; }
+.range-toggle button { white-space: nowrap; min-width: 0; }
+.history-tabs { max-width: 100%; width: 100%; }
+
+/* Date header should breathe */
+.date-header { font-size: clamp(1.4rem, 4vw, 1.9rem); padding: 0 0.5rem; word-break: break-word; }
+
+/* Calorie ring center text never overflows ring */
+.ring-wrap { max-width: 260px; }
+.ring-center { padding: 0 0.5rem; text-align: center; }
+.ring-num { font-size: clamp(1.6rem, 5vw, 2.2rem); line-height: 1; }
+.cal-list li { gap: 0.75rem; flex-wrap: wrap; }
+.cal-list li > span:first-child { min-width: 0; flex: 1 1 auto; }
+.cal-list li > span:last-child { font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+
+/* Macro legend rows: ensure dot/label/value/dv don't crash */
+.macro-row { gap: 0.5rem; }
+.macro-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.macro-val { white-space: nowrap; }
+.macro-dv { white-space: nowrap; }
+
+/* Meal cards: long item names should truncate, not push kcal off-screen */
+.meal-card .card-header { flex-wrap: nowrap; gap: 0.75rem; }
+.meal-card .card-header h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meal-item { gap: 0.75rem; }
+.meal-item > div:first-child { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.meal-item > div:first-child strong { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; white-space: nowrap; }
+.meal-item > span:last-child { flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Entry rows in History: enforce min-width:0 so flex children can shrink */
+.entry-row { gap: 0.75rem; }
+.entry-row > div { min-width: 0; flex: 1 1 auto; }
+.entry-row > div p { overflow-wrap: anywhere; word-break: break-word; }
+.entry-row > button { flex: 0 0 auto; }
+
+/* Calendar cells: more vertical room and clean stacking */
+.cal-cell { min-height: 78px; padding: 6px; gap: 4px; overflow: hidden; }
+.cal-day-num { line-height: 1; }
+.cal-day-stats { display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+.cal-cal, .cal-pro { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-grid.month .cal-cell { min-height: 64px; }
+
+/* Week strip in Edit History */
+.week-day { min-width: 0; padding: 0.45rem 0.2rem; }
+.week-nav { gap: 0.5rem; flex-wrap: wrap; }
+.week-nav strong { min-width: 0; flex: 1 1 auto; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Admin table: avoid email overflow on narrow screens */
+.data-table { table-layout: auto; }
+.data-table td, .data-table th { vertical-align: middle; }
+.data-table td:nth-child(2) { word-break: break-all; }
+.role-tag { white-space: nowrap; display: inline-block; }
+
+/* Forms: textarea + inputs full-width, labels stack */
+.card label { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.85rem; min-width: 0; }
+.card input, .card select, .card textarea { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.card textarea { resize: vertical; }
+
+/* Recharts containers: ensure parent has min-width:0 so they don't overflow */
+.donut-wrap, .nb-pie-wrap, .ring-wrap { min-width: 0; }

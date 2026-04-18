@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { api } from '../api';
+import { api, getToken } from '../api';
 
 const tz = () => new Date().getTimezoneOffset();
 const todayISO = () => {
@@ -135,14 +135,63 @@ export function WaterCard({ user, onUpdated }) {
 }
 
 // --------------- Fasting ---------------
+const LOCAL_FAST_KEY = 'ai_food_tracker_local_fast';
+
+function readLocalFast() {
+  try {
+    const raw = localStorage.getItem(LOCAL_FAST_KEY);
+    if (!raw) return { active: false };
+    const parsed = JSON.parse(raw);
+    if (!parsed?.started_at) return { active: false };
+    return { active: true, started_at: parsed.started_at, target_hours: parsed.target_hours || 16 };
+  } catch { return { active: false }; }
+}
+function writeLocalFast(status) {
+  if (status?.active && status.started_at) {
+    localStorage.setItem(LOCAL_FAST_KEY, JSON.stringify({
+      started_at: status.started_at, target_hours: status.target_hours || 16,
+    }));
+  } else {
+    localStorage.removeItem(LOCAL_FAST_KEY);
+  }
+}
+
+function playGoalBeep() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const now = ctx.currentTime;
+    // Three-tone chime: C5 -> E5 -> G5
+    [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * 0.22;
+      const end = start + 0.35;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.35, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(end + 0.02);
+    });
+    setTimeout(() => ctx.close().catch(() => {}), 1500);
+  } catch { /* audio not available */ }
+}
+
 export function FastingCard() {
-  const [status, setStatus] = useState({ active: false });
+  const authed = !!getToken();
+  const [status, setStatus] = useState(() => (authed ? { active: false } : readLocalFast()));
   const [target, setTarget] = useState(16);
   const [now, setNow] = useState(Date.now());
+  const goalFiredRef = useRef(false);
 
   const load = useCallback(async () => {
+    if (!authed) { setStatus(readLocalFast()); return; }
     try { setStatus(await api('/fast')); } catch { /* ignore */ }
-  }, []);
+  }, [authed]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (!status.active) return;
@@ -150,17 +199,44 @@ export function FastingCard() {
     return () => clearInterval(id);
   }, [status.active]);
 
+  // Reset the "goal already fired" flag whenever a new fast starts or stops.
+  useEffect(() => {
+    goalFiredRef.current = false;
+  }, [status.active, status.started_at]);
+
   const elapsedSec = useMemo(() => {
     if (!status.active || !status.started_at) return 0;
     return Math.max(0, (now - new Date(status.started_at).getTime()) / 1000);
   }, [status, now]);
   const elapsedHrs = elapsedSec / 3600;
 
+  // Chime once when the goal is first crossed in this session.
+  useEffect(() => {
+    if (!status.active) return;
+    const tgtH = status.target_hours || target;
+    if (!tgtH) return;
+    if (elapsedHrs >= tgtH && !goalFiredRef.current) {
+      goalFiredRef.current = true;
+      playGoalBeep();
+    }
+  }, [elapsedHrs, status.active, status.target_hours, target]);
+
   async function start() {
+    if (!authed) {
+      const next = { active: true, started_at: new Date().toISOString(), target_hours: target };
+      writeLocalFast(next);
+      setStatus(next);
+      return;
+    }
     const r = await api('/fast/start', { method: 'POST', body: JSON.stringify({ target_hours: target }) });
     setStatus(r);
   }
   async function stop() {
+    if (!authed) {
+      writeLocalFast(null);
+      setStatus({ active: false });
+      return;
+    }
     const r = await api('/fast/stop', { method: 'POST' });
     setStatus(r);
   }

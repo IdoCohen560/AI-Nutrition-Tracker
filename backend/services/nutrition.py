@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 
@@ -9,6 +10,27 @@ from models import FoodItemsCache
 from schemas import FoodItemOut
 
 logger = logging.getLogger(__name__)
+
+# Micronutrient USDA nutrient IDs → internal key.
+# Units: all vitamins in mcg except vitamin C/E in mg; minerals in mg (except selenium mcg — omitted for simplicity).
+_MICRO_IDS: dict[str, int] = {
+    "vitamin_a_mcg":   1106,   # Vitamin A, RAE
+    "vitamin_c_mg":    1162,
+    "vitamin_d_mcg":   1114,
+    "vitamin_e_mg":    1109,
+    "vitamin_k_mcg":   1185,
+    "thiamin_mg":      1165,   # B1
+    "riboflavin_mg":   1166,   # B2
+    "niacin_mg":       1167,   # B3
+    "vitamin_b6_mg":   1175,
+    "folate_mcg":      1177,
+    "vitamin_b12_mcg": 1178,
+    "calcium_mg":      1087,
+    "iron_mg":         1089,
+    "magnesium_mg":    1090,
+    "potassium_mg":    1092,
+    "zinc_mg":         1095,
+}
 
 # All nutrition values below are PER 100 GRAMS (USDA convention).
 # Tuple: (cal, protein_g, carbs_g, fat_g, sat_fat_g, chol_mg, sodium_mg, fiber_g, sugars_g, added_sugars_g)
@@ -159,7 +181,20 @@ def _scale_per100g(per100: tuple, grams: float) -> tuple:
     return tuple(round(v * factor, 2) for v in per100)
 
 
-def _food_item_from_per100g(name: str, quantity: str | None, per100: tuple, grams: float) -> FoodItemOut:
+def _scale_micros(micros_per100: dict, grams: float) -> dict:
+    if not micros_per100:
+        return {}
+    factor = grams / 100.0
+    return {k: round(float(v) * factor, 3) for k, v in micros_per100.items() if v is not None}
+
+
+def _food_item_from_per100g(
+    name: str,
+    quantity: str | None,
+    per100: tuple,
+    grams: float,
+    micros_per100: dict | None = None,
+) -> FoodItemOut:
     cal, p, c, f, sf, chol, sod, fib, sug, asug = _scale_per100g(per100, grams)
     return FoodItemOut(
         name=name.strip() or "food",
@@ -174,6 +209,7 @@ def _food_item_from_per100g(name: str, quantity: str | None, per100: tuple, gram
         fiber_g=fib,
         sugars_g=sug,
         added_sugars_g=asug,
+        micros=_scale_micros(micros_per100 or {}, grams) or None,
     )
 
 
@@ -192,8 +228,15 @@ def _cache_per100g_tuple(cached: FoodItemsCache) -> tuple:
     )
 
 
-async def lookup_usda_per100g(query: str, db: Session | None = None) -> tuple[tuple, str] | None:
-    """Returns (per100g_tuple, canonical_name) or None."""
+def _cache_micros(cached: FoodItemsCache) -> dict:
+    try:
+        return json.loads(cached.micros_json or "{}") or {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+async def lookup_usda_per100g(query: str, db: Session | None = None) -> tuple[tuple, str, dict] | None:
+    """Returns (per100g_tuple, canonical_name, micros_per100g_dict) or None."""
     normalized = _normalize_name(query)
 
     if db is not None:
@@ -202,7 +245,7 @@ async def lookup_usda_per100g(query: str, db: Session | None = None) -> tuple[tu
         ).first()
         if cached:
             logger.info("USDA cache hit for '%s'", normalized)
-            return _cache_per100g_tuple(cached), cached.normalized_name
+            return _cache_per100g_tuple(cached), cached.normalized_name, _cache_micros(cached)
 
     if not settings.usda_api_key:
         return None
@@ -231,13 +274,20 @@ async def lookup_usda_per100g(query: str, db: Session | None = None) -> tuple[tu
                 float(nutrients.get(1063, 0) or 0),
                 float(nutrients.get(1235, 0) or 0),
             )
+            micros = {
+                key: float(nutrients[nid])
+                for key, nid in _MICRO_IDS.items()
+                if nid in nutrients and nutrients[nid] is not None
+            }
             fdc_id = f0.get("fdcId")
+            barcode = str(f0.get("gtinUpc") or "") or None
 
             if db is not None:
                 try:
                     cache_entry = FoodItemsCache(
                         normalized_name=normalized,
                         fdc_id=fdc_id,
+                        barcode=barcode,
                         calories_per100g=max(int(per100[0]), 0),
                         protein_g_per100g=per100[1],
                         carbs_g_per100g=per100[2],
@@ -248,6 +298,7 @@ async def lookup_usda_per100g(query: str, db: Session | None = None) -> tuple[tu
                         fiber_g_per100g=per100[7],
                         sugars_g_per100g=per100[8],
                         added_sugars_g_per100g=per100[9],
+                        micros_json=json.dumps(micros),
                     )
                     db.add(cache_entry)
                     db.commit()
@@ -255,7 +306,88 @@ async def lookup_usda_per100g(query: str, db: Session | None = None) -> tuple[tu
                 except Exception:
                     db.rollback()
 
-            return per100, str(desc)[:120]
+            return per100, str(desc)[:120], micros
+    except Exception:
+        return None
+
+
+async def lookup_by_barcode(gtin: str, db: Session | None = None) -> FoodItemOut | None:
+    """Look up a packaged food by UPC/GTIN. Tries cache first, then USDA branded foods.
+
+    Returns a FoodItemOut with quantity='100g' (one serving guess — caller can rescale).
+    """
+    gtin = re.sub(r"\D", "", gtin or "")
+    if not gtin:
+        return None
+
+    if db is not None:
+        cached = db.query(FoodItemsCache).filter(FoodItemsCache.barcode == gtin).first()
+        if cached:
+            per100 = _cache_per100g_tuple(cached)
+            return _food_item_from_per100g(
+                cached.normalized_name, None, per100, 100.0, _cache_micros(cached)
+            )
+
+    if not settings.usda_api_key:
+        return None
+    url = "https://api.nal.usda.gov/fdc/v1/foods/search"
+    params = {"query": gtin, "dataType": "Branded", "pageSize": 1, "api_key": settings.usda_api_key}
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            foods = (r.json() or {}).get("foods") or []
+            if not foods:
+                return None
+            f0 = foods[0]
+            if str(f0.get("gtinUpc") or "").replace(" ", "") != gtin:
+                # USDA's fuzzy search sometimes returns a non-match; be strict on barcode
+                return None
+            nutrients = {n["nutrientId"]: n["value"] for n in f0.get("foodNutrients", [])}
+            per100 = (
+                float(nutrients.get(1008, 100) or 100),
+                float(nutrients.get(1003, 5) or 5),
+                float(nutrients.get(1005, 15) or 15),
+                float(nutrients.get(1004, 5) or 5),
+                float(nutrients.get(1258, 0) or 0),
+                float(nutrients.get(1253, 0) or 0),
+                float(nutrients.get(1093, 0) or 0),
+                float(nutrients.get(1079, 0) or 0),
+                float(nutrients.get(1063, 0) or 0),
+                float(nutrients.get(1235, 0) or 0),
+            )
+            micros = {
+                key: float(nutrients[nid])
+                for key, nid in _MICRO_IDS.items()
+                if nid in nutrients and nutrients[nid] is not None
+            }
+            desc = str(f0.get("description", gtin))[:120]
+            normalized = _normalize_name(desc)
+
+            if db is not None:
+                try:
+                    cache_entry = FoodItemsCache(
+                        normalized_name=normalized,
+                        fdc_id=f0.get("fdcId"),
+                        barcode=gtin,
+                        calories_per100g=max(int(per100[0]), 0),
+                        protein_g_per100g=per100[1],
+                        carbs_g_per100g=per100[2],
+                        fat_g_per100g=per100[3],
+                        saturated_fat_g_per100g=per100[4],
+                        cholesterol_mg_per100g=per100[5],
+                        sodium_mg_per100g=per100[6],
+                        fiber_g_per100g=per100[7],
+                        sugars_g_per100g=per100[8],
+                        added_sugars_g_per100g=per100[9],
+                        micros_json=json.dumps(micros),
+                    )
+                    db.add(cache_entry)
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+            return _food_item_from_per100g(desc, None, per100, 100.0, micros)
     except Exception:
         return None
 
@@ -281,8 +413,8 @@ async def enrich_item(name: str, quantity: str | None, db: Session | None = None
 
     usda = await lookup_usda_per100g(name, db=db)
     if usda:
-        per100, canonical = usda
-        item = _food_item_from_per100g(canonical or name, quantity, per100, grams)
+        per100, canonical, micros = usda
+        item = _food_item_from_per100g(canonical or name, quantity, per100, grams, micros)
         return item, "usda"
 
     key = _keyword_hit(name)

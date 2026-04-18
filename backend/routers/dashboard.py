@@ -18,6 +18,7 @@ from schemas import (
     MacroDetail,
     MacrosBreakdown,
     MealBreakdown,
+    MicroDetail,
     WeeklyDashboardOut,
     WeeklyDayOut,
 )
@@ -32,6 +33,27 @@ FDA_DV_CARBS_G = 275.0
 FDA_DV_FIBER_G = 28.0
 FDA_DV_ADDED_SUGARS_G = 50.0
 FDA_DV_PROTEIN_G = 50.0
+
+# FDA Daily Values for micronutrients (adults). Source: FDA 21 CFR 101.9.
+# Tuple: (label, unit, dv_amount)
+_MICRO_META: list[tuple[str, str, str, float | None]] = [
+    ("vitamin_a_mcg",   "Vitamin A",   "mcg", 900.0),
+    ("vitamin_c_mg",    "Vitamin C",   "mg",  90.0),
+    ("vitamin_d_mcg",   "Vitamin D",   "mcg", 20.0),
+    ("vitamin_e_mg",    "Vitamin E",   "mg",  15.0),
+    ("vitamin_k_mcg",   "Vitamin K",   "mcg", 120.0),
+    ("thiamin_mg",      "Thiamin (B1)",   "mg",  1.2),
+    ("riboflavin_mg",   "Riboflavin (B2)","mg", 1.3),
+    ("niacin_mg",       "Niacin (B3)",    "mg", 16.0),
+    ("vitamin_b6_mg",   "Vitamin B6",  "mg",  1.7),
+    ("folate_mcg",      "Folate",      "mcg", 400.0),
+    ("vitamin_b12_mcg", "Vitamin B12", "mcg", 2.4),
+    ("calcium_mg",      "Calcium",     "mg",  1300.0),
+    ("iron_mg",         "Iron",        "mg",  18.0),
+    ("magnesium_mg",    "Magnesium",   "mg",  420.0),
+    ("potassium_mg",    "Potassium",   "mg",  4700.0),
+    ("zinc_mg",         "Zinc",        "mg",  11.0),
+]
 
 
 @router.get("/today", response_model=DashboardTodayOut)
@@ -212,6 +234,23 @@ def dashboard_breakdown(
         protein=MacroDetail(grams=total_protein, pct_dv=round(total_protein / FDA_DV_PROTEIN_G * 100)),
     )
 
+    # Aggregate micronutrients across all items. Items store a micros dict (scaled to portion).
+    micros_total: dict[str, float] = {}
+    for e in entries:
+        for item in _deserialize_items(e.items_json):
+            if item.micros:
+                for k, v in item.micros.items():
+                    micros_total[k] = micros_total.get(k, 0.0) + float(v or 0.0)
+
+    # Weekly view: DV targets compare to weekly totals, so multiply DV by 7
+    dv_mult = 7 if range_param == "weekly" else 1
+    micros_list: list[MicroDetail] = []
+    for key, label, unit, dv in _MICRO_META:
+        amount = round(micros_total.get(key, 0.0), 2)
+        dv_amount = dv * dv_mult if dv else None
+        pct = round(amount / dv_amount * 100) if dv_amount else None
+        micros_list.append(MicroDetail(label=label, amount=amount, unit=unit, dv_amount=dv_amount, pct_dv=pct))
+
     grouped: dict[str, list[FoodLogEntry]] = defaultdict(list)
     for e in entries:
         grouped[e.meal_type].append(e)
@@ -235,5 +274,6 @@ def dashboard_breakdown(
         range=range_param,
         calories=calories,
         macros=macros,
+        micros=micros_list,
         meals=meals,
     )

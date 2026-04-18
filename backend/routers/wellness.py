@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from datetimeutil import utc_today
 from deps import get_current_user
-from models import FoodLogEntry, User, WaterEntry, WeightEntry
+from models import FoodLogEntry, StepsEntry, User, WaterEntry, WeightEntry
+from schemas import StepsDayOut, StepsUpdate
 
 router = APIRouter(prefix="", tags=["wellness"])
 
@@ -300,3 +301,29 @@ def _diet_score_today(db: Session, user: User, tz_offset: int) -> tuple[int | No
         "added_sugars_g": round(sug, 1),
         "protein_target_g": round(pro_target, 1),
     }
+
+
+# ---------- steps (manual entry; stub for future Google Fit/Apple Health sync) ----------
+
+@router.post("/steps", response_model=StepsDayOut)
+def set_steps(body: StepsUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    target = body.for_date or _local_today_iso(body.tz_offset)
+    entry = db.query(StepsEntry).filter(
+        StepsEntry.user_id == user.id, StepsEntry.recorded_for == target
+    ).first()
+    if entry:
+        entry.steps = body.steps
+    else:
+        entry = StepsEntry(user_id=user.id, steps=body.steps, recorded_for=target)
+        db.add(entry)
+    db.commit()
+    return StepsDayOut(date=target, steps=body.steps)
+
+
+@router.get("/steps", response_model=StepsDayOut)
+def get_steps(tz_offset: int = Query(0, alias="tz"), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    target = _local_today_iso(tz_offset)
+    entry = db.query(StepsEntry).filter(
+        StepsEntry.user_id == user.id, StepsEntry.recorded_for == target
+    ).first()
+    return StepsDayOut(date=target, steps=entry.steps if entry else 0)

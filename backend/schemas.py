@@ -83,6 +83,9 @@ class FoodItemOut(BaseModel):
     fiber_g: float = 0.0
     sugars_g: float = 0.0
     added_sugars_g: float = 0.0
+    # Optional micronutrients scaled to this item's portion.
+    # Keys use convention "<name>_<unit>" e.g. "vitamin_c_mg", "calcium_mg", "folate_mcg".
+    micros: dict[str, float] | None = None
 
 
 class ParseLogRequest(BaseModel):
@@ -213,6 +216,14 @@ class MacrosBreakdown(BaseModel):
     protein: MacroDetail
 
 
+class MicroDetail(BaseModel):
+    label: str
+    amount: float
+    unit: str
+    dv_amount: float | None = None
+    pct_dv: int | None = None
+
+
 class MealBreakdown(BaseModel):
     calories: int
     items: list[FoodItemOut]
@@ -224,7 +235,45 @@ class BreakdownOut(BaseModel):
     range: str
     calories: CaloriesBreakdown
     macros: MacrosBreakdown
+    micros: list[MicroDetail] = []
     meals: dict[str, MealBreakdown]
+
+
+class BarcodeLookupOut(BaseModel):
+    found: bool
+    item: FoodItemOut | None = None
+
+
+class RecipeImportRequest(BaseModel):
+    url: str = Field(min_length=6, max_length=2000)
+
+
+class RecipeImportResponse(BaseModel):
+    found: bool
+    title: str | None = None
+    items: list[FoodItemOut] = []
+    nutrition_warnings: list[str] = []
+    error: str | None = None
+
+
+class AdaptiveTargetOut(BaseModel):
+    suggested_calories: int
+    current_goal: int | None
+    reason: str
+    baseline_tdee: int | None
+    weight_trend_kg_per_week: float | None
+    avg_logged_calories: int | None
+
+
+class StepsDayOut(BaseModel):
+    date: str
+    steps: int
+
+
+class StepsUpdate(BaseModel):
+    steps: int = Field(ge=0, le=200_000)
+    for_date: str | None = None
+    tz_offset: int = 0
 
 
 class QuickLogFromRecRequest(BaseModel):

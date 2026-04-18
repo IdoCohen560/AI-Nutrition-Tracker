@@ -11,6 +11,7 @@ from datetimeutil import utc_day_range, utc_today
 from deps import get_current_user
 from models import FoodLogEntry, User
 from schemas import (
+    BarcodeLookupOut,
     CreateLogRequest,
     FoodItemOut,
     FoodLogEntryOut,
@@ -18,9 +19,12 @@ from schemas import (
     ParseLogRequest,
     ParseLogResponse,
     QuickLogFromRecRequest,
+    RecipeImportRequest,
+    RecipeImportResponse,
 )
 from services.nlp import parse_meal_description
-from services.nutrition import enrich_item
+from services.nutrition import enrich_item, lookup_by_barcode
+from services.recipe_import import import_recipe_from_url
 
 router = APIRouter(prefix="/logs", tags=["logs"])
 
@@ -110,6 +114,27 @@ async def parse_log(body: ParseLogRequest, user: User = Depends(get_current_user
             nlp_error="NLP service did not respond in time. Try again or use manual entry.",
             nutrition_warnings=[],
         )
+
+
+@router.get("/barcode/{gtin}", response_model=BarcodeLookupOut)
+async def barcode_lookup(gtin: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = await lookup_by_barcode(gtin, db=db)
+    if not item:
+        return BarcodeLookupOut(found=False)
+    return BarcodeLookupOut(found=True, item=item)
+
+
+@router.post("/import-recipe", response_model=RecipeImportResponse)
+async def import_recipe(
+    body: RecipeImportRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = await import_recipe_from_url(body.url, db=db)
+    except Exception as exc:
+        return RecipeImportResponse(found=False, error=str(exc))
+    return result
 
 
 @router.post("", response_model=FoodLogEntryOut, status_code=status.HTTP_201_CREATED)

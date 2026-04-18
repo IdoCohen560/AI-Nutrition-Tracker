@@ -95,4 +95,17 @@ class FoodItemsCache(Base):
     fiber_g_per100g = Column(Float, default=0.0)
     sugars_g_per100g = Column(Float, default=0.0)
     added_sugars_g_per100g = Column(Float, default=0.0)
+    # JSON of {micro_key: amount_per_100g} — vitamins/minerals (see services/nutrition._MICRO_IDS)
+    micros_json = Column(Text, default="{}", nullable=False)
+    # Optional: universal product code (GTIN/UPC) for barcode lookup
+    barcode = Column(String(32), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class StepsEntry(Base):
+    __tablename__ = "steps_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    steps = Column(Integer, nullable=False, default=0)
+    recorded_for = Column(String(10), nullable=False)  # YYYY-MM-DD local
     created_at = Column(DateTime, default=datetime.utcnow)

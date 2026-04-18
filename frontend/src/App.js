@@ -7,7 +7,6 @@ import History from './pages/History';
 import Login from './pages/Login';
 import LogFood from './pages/LogFood';
 import Onboarding from './pages/Onboarding';
-import PhotoLog from './pages/PhotoLog';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
 import './App.css';
@@ -71,7 +70,6 @@ export default function App() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/log" element={<LogFood />} />
-        <Route path="/photo" element={<PhotoLog />} />
         <Route path="/history" element={<History />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin" element={<Admin />} />

@@ -35,11 +35,11 @@ export default function Admin() {
     setBusyId(target.id);
     setErr('');
     try {
-      await api(`/admin/users/${target.id}/role`, {
+      const updated = await api(`/admin/users/${target.id}/role`, {
         method: 'PATCH',
         body: JSON.stringify({ role }),
       });
-      await load();
+      setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, ...updated } : u)));
     } catch (ex) {
       setErr(ex.message);
     } finally {
@@ -57,9 +57,6 @@ export default function Admin() {
           <h2>
             {loading ? 'Loading…' : `${users.length} registered user${users.length === 1 ? '' : 's'}`}
           </h2>
-          <button type="button" className="btn ghost small" onClick={load} disabled={loading}>
-            {loading ? '…' : 'Refresh'}
-          </button>
         </div>
         {!loading && users.length === 0 && <p className="muted">No users yet.</p>}
         <table className="data-table">

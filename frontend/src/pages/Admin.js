@@ -59,7 +59,8 @@ export default function Admin() {
           </h2>
         </div>
         {!loading && users.length === 0 && <p className="muted">No users yet.</p>}
-        <table className="data-table">
+        <div className="table-scroll">
+        <table className="data-table admin-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -90,11 +91,11 @@ export default function Admin() {
                     ) : u.role === 'admin' ? (
                       <button
                         type="button"
-                        className="btn ghost small"
+                        className="btn danger ghost small"
                         disabled={busyId === u.id}
                         onClick={() => setRole(u, 'user')}
                       >
-                        {busyId === u.id ? '…' : 'Demote to user'}
+                        {busyId === u.id ? 'Demoting…' : 'Demote'}
                       </button>
                     ) : (
                       <button
@@ -103,7 +104,7 @@ export default function Admin() {
                         disabled={busyId === u.id}
                         onClick={() => setRole(u, 'admin')}
                       >
-                        {busyId === u.id ? '…' : 'Promote to admin'}
+                        {busyId === u.id ? 'Promoting…' : 'Promote to admin'}
                       </button>
                     )}
                   </td>
@@ -112,6 +113,7 @@ export default function Admin() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -23,16 +23,10 @@ function fmtDate(iso) {
   });
 }
 
-function shiftDate(iso, days) {
-  const d = new Date(iso + 'T12:00:00Z');
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export default function Dashboard() {
-  const [date, setDate] = useState(todayISO());
+  const [date] = useState(todayISO());
   const [range, setRange] = useState('daily');
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -74,11 +68,7 @@ export default function Dashboard() {
 
   return (
     <div className="page dashboard">
-      <div className="date-scrubber">
-        <button type="button" className="btn ghost small" onClick={() => setDate(shiftDate(date, -1))}>‹</button>
-        <span className="date-label">{fmtDate(date)}</span>
-        <button type="button" className="btn ghost small" onClick={() => setDate(shiftDate(date, 1))}>›</button>
-      </div>
+      <h1 className="date-header">{fmtDate(date)}</h1>
 
       <Calendar />
 

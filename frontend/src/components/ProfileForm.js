@@ -217,8 +217,8 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
         <button type="submit" className="btn primary" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
         </button>
-        {children}
       </div>
+      {children && <div className="btn-row">{children}</div>}
     </form>
   );
 }

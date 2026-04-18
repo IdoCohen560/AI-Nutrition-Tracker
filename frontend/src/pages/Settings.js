@@ -29,10 +29,7 @@ export default function Settings() {
 
       {ok && <div className="success-banner">{ok}</div>}
 
-      <ProfileForm initial={user} onSubmit={handleSubmit} submitLabel="Save profile" busy={busy} />
-
-      <div className="card">
-        <h2>Session</h2>
+      <ProfileForm initial={user} onSubmit={handleSubmit} submitLabel="Save profile" busy={busy}>
         <button
           type="button"
           className="btn danger"
@@ -43,7 +40,7 @@ export default function Settings() {
         >
           Log out
         </button>
-      </div>
+      </ProfileForm>
     </div>
   );
 }

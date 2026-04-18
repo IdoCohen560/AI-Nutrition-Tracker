@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
@@ -35,6 +35,14 @@ export default function Dashboard() {
   const [range, setRange] = useState('daily');
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
+  const dateInputRef = useRef(null);
+
+  function openPicker() {
+    const el = dateInputRef.current;
+    if (!el) return;
+    if (typeof el.showPicker === 'function') el.showPicker();
+    else el.focus();
+  }
 
   const load = useCallback(async () => {
     setErr('');
@@ -75,8 +83,20 @@ export default function Dashboard() {
     <div className="page dashboard">
       <div className="date-scrubber">
         <button type="button" className="btn ghost small" onClick={() => setDate(shiftDate(date, -1))}>‹</button>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="date-input" />
-        <span className="muted">{fmtDate(date)}</span>
+        <button type="button" className="date-trigger" onClick={openPicker}>
+          <span className="date-cal">📅</span>
+          <span>{fmtDate(date)}</span>
+        </button>
+        <input
+          ref={dateInputRef}
+          type="date"
+          value={date}
+          max={todayISO()}
+          onChange={(e) => setDate(e.target.value)}
+          className="date-input-hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
         <button type="button" className="btn ghost small" onClick={() => setDate(shiftDate(date, 1))}>›</button>
       </div>
 

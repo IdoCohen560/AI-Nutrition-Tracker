@@ -1,16 +1,35 @@
-from datetime import timedelta
+from collections import defaultdict
+from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from database import get_db
 from datetimeutil import utc_day_range, utc_today
 from deps import get_current_user
 from models import FoodLogEntry, User
-from routers.logs import _entry_to_out
-from schemas import DashboardTodayOut, WeeklyDashboardOut, WeeklyDayOut
+from routers.logs import _deserialize_items, _entry_to_out
+from schemas import (
+    BreakdownOut,
+    CaloriesBreakdown,
+    DashboardTodayOut,
+    MacroDetail,
+    MacrosBreakdown,
+    MealBreakdown,
+    WeeklyDashboardOut,
+    WeeklyDayOut,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+FDA_DV_FAT_G = 78.0
+FDA_DV_SAT_FAT_G = 20.0
+FDA_DV_CHOLESTEROL_MG = 300.0
+FDA_DV_SODIUM_MG = 2300.0
+FDA_DV_CARBS_G = 275.0
+FDA_DV_FIBER_G = 28.0
+FDA_DV_ADDED_SUGARS_G = 50.0
+FDA_DV_PROTEIN_G = 50.0
 
 
 @router.get("/today", response_model=DashboardTodayOut)
@@ -70,3 +89,95 @@ def dashboard_weekly(user: User = Depends(get_current_user), db: Session = Depen
             )
         )
     return WeeklyDashboardOut(days=days)
+
+
+@router.get("/breakdown", response_model=BreakdownOut)
+def dashboard_breakdown(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    date_param: date | None = Query(None, alias="date"),
+    range_param: str = Query("daily", alias="range"),
+):
+    target = date_param or utc_today()
+
+    if range_param == "weekly":
+        first_day = target - timedelta(days=6)
+        start, _ = utc_day_range(first_day)
+        _, end = utc_day_range(target)
+    else:
+        start, end = utc_day_range(target)
+
+    entries = (
+        db.query(FoodLogEntry)
+        .filter(
+            FoodLogEntry.user_id == user.id,
+            FoodLogEntry.created_at >= start,
+            FoodLogEntry.created_at < end,
+        )
+        .all()
+    )
+
+    total_cal = sum(e.total_calories or 0 for e in entries)
+    total_fat = sum(e.total_fat_g or 0.0 for e in entries)
+    total_sat_fat = sum(e.total_saturated_fat_g or 0.0 for e in entries)
+    total_chol = sum(e.total_cholesterol_mg or 0.0 for e in entries)
+    total_sodium = sum(e.total_sodium_mg or 0.0 for e in entries)
+    total_carbs = sum(e.total_carbs_g or 0.0 for e in entries)
+    total_fiber = sum(e.total_fiber_g or 0.0 for e in entries)
+    total_sugars = sum(e.total_sugars_g or 0.0 for e in entries)
+    total_added_sugars = sum(e.total_added_sugars_g or 0.0 for e in entries)
+    total_protein = sum(e.total_protein_g or 0.0 for e in entries)
+
+    budget = user.daily_calorie_goal
+    if range_param == "weekly" and budget is not None:
+        budget = budget * 7
+    consumed = total_cal
+    burned = 0
+    net = consumed - burned
+    delta = (budget - net) if budget is not None else None
+    state = None
+    if delta is not None:
+        state = "under" if delta >= 0 else "over"
+
+    calories = CaloriesBreakdown(
+        consumed=consumed, burned=burned, net=net,
+        budget=budget, delta=delta, state=state,
+    )
+
+    macros = MacrosBreakdown(
+        fat=MacroDetail(grams=total_fat, pct_dv=round(total_fat / FDA_DV_FAT_G * 100)),
+        saturated_fat=MacroDetail(grams=total_sat_fat, pct_dv=round(total_sat_fat / FDA_DV_SAT_FAT_G * 100)),
+        cholesterol=MacroDetail(mg=total_chol, pct_dv=round(total_chol / FDA_DV_CHOLESTEROL_MG * 100)),
+        sodium=MacroDetail(mg=total_sodium, pct_dv=round(total_sodium / FDA_DV_SODIUM_MG * 100)),
+        carbs=MacroDetail(grams=total_carbs, pct_dv=round(total_carbs / FDA_DV_CARBS_G * 100)),
+        fiber=MacroDetail(grams=total_fiber, pct_dv=round(total_fiber / FDA_DV_FIBER_G * 100)),
+        sugars=MacroDetail(grams=total_sugars, pct_dv=None),
+        added_sugars=MacroDetail(grams=total_added_sugars, pct_dv=round(total_added_sugars / FDA_DV_ADDED_SUGARS_G * 100)),
+        protein=MacroDetail(grams=total_protein, pct_dv=round(total_protein / FDA_DV_PROTEIN_G * 100)),
+    )
+
+    grouped: dict[str, list[FoodLogEntry]] = defaultdict(list)
+    for e in entries:
+        grouped[e.meal_type].append(e)
+
+    meals: dict[str, MealBreakdown] = {}
+    for meal_type in ["breakfast", "lunch", "dinner", "snack"]:
+        meal_entries = grouped.get(meal_type, [])
+        meal_cal = sum(e.total_calories or 0 for e in meal_entries)
+        items = []
+        for e in meal_entries:
+            items.extend(_deserialize_items(e.items_json))
+        key = "snacks" if meal_type == "snack" else meal_type
+        suggested = None
+        if key == "snacks":
+            daily_budget = user.daily_calorie_goal
+            suggested = max(0, (daily_budget - consumed) // 4) if daily_budget else 0
+        meals[key] = MealBreakdown(calories=meal_cal, items=items, suggested_calories=suggested)
+
+    return BreakdownOut(
+        date=target.isoformat(),
+        range=range_param,
+        calories=calories,
+        macros=macros,
+        meals=meals,
+    )

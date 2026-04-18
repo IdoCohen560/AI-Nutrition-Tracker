@@ -143,6 +143,47 @@ class RecommendationsOut(BaseModel):
     mode: Literal["normal", "no_budget", "fallback", "cached"]
 
 
+class CaloriesBreakdown(BaseModel):
+    consumed: int
+    burned: int
+    net: int
+    budget: int | None
+    delta: int | None
+    state: str | None
+
+
+class MacroDetail(BaseModel):
+    grams: float | None = None
+    mg: float | None = None
+    pct_dv: int | None = None
+
+
+class MacrosBreakdown(BaseModel):
+    fat: MacroDetail
+    saturated_fat: MacroDetail
+    cholesterol: MacroDetail
+    sodium: MacroDetail
+    carbs: MacroDetail
+    fiber: MacroDetail
+    sugars: MacroDetail
+    added_sugars: MacroDetail
+    protein: MacroDetail
+
+
+class MealBreakdown(BaseModel):
+    calories: int
+    items: list[FoodItemOut]
+    suggested_calories: int | None = None
+
+
+class BreakdownOut(BaseModel):
+    date: str
+    range: str
+    calories: CaloriesBreakdown
+    macros: MacrosBreakdown
+    meals: dict[str, MealBreakdown]
+
+
 class QuickLogFromRecRequest(BaseModel):
     food_name: str
     estimated_calories: int

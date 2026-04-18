@@ -388,3 +388,50 @@ ul.entry-list > li.entry-row p {
 
 /* ---------- recharts safety ---------- */
 .recharts-responsive-container { min-width: 0; }
+
+/* ---------- barcode scanner modal ---------- */
+.bc-backdrop {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem;
+}
+.bc-panel { width: min(520px, 100%); max-height: 95vh; overflow: auto; }
+.bc-region { width: 100%; min-height: 280px; background: #000; border-radius: 8px; overflow: hidden; }
+.bc-region video { width: 100%; height: auto; object-fit: cover; }
+
+/* ---------- recipe import ---------- */
+.recipe-import { margin-top: 0.75rem; }
+.recipe-import summary { cursor: pointer; user-select: none; padding: 0.25rem 0; }
+.recipe-import input[type="url"] { flex: 2 1 280px; }
+
+/* ---------- micronutrients panel ---------- */
+.micro-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem 1.1rem; margin-top: 0.5rem;
+}
+.micro-row {
+  display: flex; flex-direction: column; gap: 0.2rem;
+}
+.micro-row .label-line {
+  display: flex; justify-content: space-between; gap: 0.5rem;
+  font-size: 0.85rem; align-items: baseline;
+}
+.micro-row .label-line .label { font-weight: 500; }
+.micro-row .label-line .value { color: var(--muted); font-variant-numeric: tabular-nums; }
+.micro-bar {
+  height: 6px; background: rgba(0,0,0,0.08); border-radius: 3px; overflow: hidden;
+}
+.micro-bar > span {
+  display: block; height: 100%; background: var(--accent); border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.micro-bar > span.hit { background: #3a8a3a; }
+
+/* ---------- adaptive target card ---------- */
+.adaptive-card .delta { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.adaptive-card .positive { color: #3a8a3a; }
+.adaptive-card .negative { color: var(--danger); }
+.adaptive-card .reason { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+
+/* ---------- steps card ---------- */
+.steps-input { display: flex; gap: 0.5rem; align-items: center; max-width: 360px; }
+.steps-input input { flex: 1; }

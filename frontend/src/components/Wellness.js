@@ -335,3 +335,129 @@ export function StatsCard({ refreshKey }) {
 }
 
 export { todayISO };
+
+// --------------- Adaptive calorie target ---------------
+export function AdaptiveTargetCard({ user, onApplied }) {
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const load = useCallback(async () => {
+    try { setData(await api('/users/me/adaptive-target')); } catch (e) { setErr(e.message); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function applyTarget() {
+    if (!data) return;
+    setBusy(true); setErr('');
+    try {
+      await api('/users/me', { method: 'PATCH', body: JSON.stringify({ daily_calorie_goal: data.suggested_calories }) });
+      onApplied?.(data.suggested_calories);
+      await load();
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  if (!data) {
+    return (
+      <div className="card adaptive-card">
+        <div className="card-header"><h2>Adaptive target</h2></div>
+        <p className="muted">{err || 'Computing…'}</p>
+      </div>
+    );
+  }
+
+  const cur = data.current_goal;
+  const suggested = data.suggested_calories;
+  const diff = cur != null ? suggested - cur : null;
+
+  return (
+    <div className="card adaptive-card">
+      <div className="card-header">
+        <h2>Adaptive target</h2>
+        <span className="muted small">suggested</span>
+      </div>
+      <p className="delta">{suggested.toLocaleString()} <span className="muted small">kcal/day</span></p>
+      {diff != null && diff !== 0 && (
+        <p className={diff > 0 ? 'positive' : 'negative'} style={{ margin: '0 0 0.25rem' }}>
+          {diff > 0 ? `+${diff}` : diff} vs current goal ({cur})
+        </p>
+      )}
+      <p className="reason">{data.reason}</p>
+      {data.weight_trend_kg_per_week != null && (
+        <p className="muted small" style={{ marginTop: '0.25rem' }}>
+          Weight trend: {data.weight_trend_kg_per_week > 0 ? '+' : ''}{data.weight_trend_kg_per_week} kg/week
+          {data.avg_logged_calories != null && ` · avg logged: ${data.avg_logged_calories} kcal/day`}
+        </p>
+      )}
+      {cur !== suggested && (
+        <div className="btn-row">
+          <button type="button" className="btn primary small" disabled={busy} onClick={applyTarget}>
+            {busy ? 'Applying…' : 'Apply as new goal'}
+          </button>
+        </div>
+      )}
+      {err && <p className="error-banner">{err}</p>}
+    </div>
+  );
+}
+
+// --------------- Daily steps (manual entry; placeholder for wearable sync) ---------------
+export function StepsCard() {
+  const [steps, setSteps] = useState(0);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api(`/steps?tz=${tz()}`);
+      setSteps(r.steps || 0);
+      setInput(String(r.steps || 0));
+    } catch (e) { /* ignore */ }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function save() {
+    const n = Math.max(0, Math.floor(Number(input) || 0));
+    if (n === steps) return;
+    setBusy(true); setErr('');
+    try {
+      const r = await api('/steps', {
+        method: 'POST',
+        body: JSON.stringify({ steps: n, tz_offset: tz() }),
+      });
+      setSteps(r.steps);
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  // Rough calorie burn: ~0.04 kcal/step for a 70kg adult
+  const burnedKcal = Math.round(steps * 0.04);
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h2>Steps</h2>
+        <span className="muted small">today · ~{burnedKcal} kcal</span>
+      </div>
+      <div className="steps-input">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Enter step count"
+        />
+        <button type="button" className="btn primary small" disabled={busy || String(steps) === input} onClick={save}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+      <p className="muted small" style={{ marginTop: '0.35rem' }}>
+        Manual for now — Apple Health / Google Fit sync coming later.
+      </p>
+      {err && <p className="error-banner">{err}</p>}
+    </div>
+  );
+}

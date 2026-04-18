@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 function localToday() {
   const d = new Date();
@@ -45,6 +46,9 @@ export default function LogFood() {
   const [recent, setRecent] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [listening, setListening] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [recipeUrl, setRecipeUrl] = useState('');
+  const [recipeTitle, setRecipeTitle] = useState('');
   const recogRef = useRef(null);
 
   useEffect(() => {
@@ -109,6 +113,43 @@ export default function LogFood() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleBarcode(code) {
+    setScannerOpen(false);
+    setErr('');
+    try {
+      const res = await api(`/logs/barcode/${encodeURIComponent(code)}`);
+      if (!res.found || !res.item) {
+        setErr(`Barcode ${code} not found in USDA branded-foods database.`);
+        return;
+      }
+      setItems((prev) => [...prev, res.item]);
+      if (!text) setText(res.item.name);
+      setRequiresConfirmation(false);
+    } catch (ex) { setErr(ex.message); }
+  }
+
+  async function importRecipe() {
+    if (!recipeUrl.trim()) return;
+    setErr(''); setBusy(true);
+    try {
+      const res = await api('/logs/import-recipe', {
+        method: 'POST',
+        body: JSON.stringify({ url: recipeUrl.trim() }),
+      });
+      if (!res.found) {
+        setErr(res.error || 'No recipe data found at that URL.');
+        return;
+      }
+      setItems(res.items || []);
+      setRecipeTitle(res.title || '');
+      if (res.title) setText(res.title);
+      setNutritionWarnings(res.nutrition_warnings || []);
+      setParseConfidence(1.0);
+      setRequiresConfirmation(false);
+    } catch (ex) { setErr(ex.message); }
+    finally { setBusy(false); }
   }
 
   function updateItem(idx, field, value) {
@@ -214,10 +255,32 @@ export default function LogFood() {
           <button type="button" className={`btn ghost ${listening ? 'active' : ''}`} onClick={startVoice}>
             {listening ? '⏺ Listening…' : '🎤 Voice'}
           </button>
+          <button type="button" className="btn ghost" onClick={() => setScannerOpen(true)}>
+            📷 Scan barcode
+          </button>
         </div>
+        <details className="recipe-import">
+          <summary className="muted small">🔗 Import from recipe URL</summary>
+          <div className="btn-row" style={{ marginTop: '0.75rem' }}>
+            <input
+              type="url"
+              value={recipeUrl}
+              onChange={(e) => setRecipeUrl(e.target.value)}
+              placeholder="https://example.com/chicken-stir-fry"
+              style={{ flex: '2 1 280px' }}
+            />
+            <button type="button" className="btn primary" disabled={busy || !recipeUrl.trim()} onClick={importRecipe}>
+              {busy ? 'Importing…' : 'Import'}
+            </button>
+          </div>
+          {recipeTitle && <p className="muted small">Loaded: {recipeTitle}</p>}
+        </details>
         {nlpError && <div className="error-banner">{nlpError}</div>}
         {err && <div className="error-banner">{err}</div>}
       </div>
+      {scannerOpen && (
+        <BarcodeScanner onDetected={handleBarcode} onClose={() => setScannerOpen(false)} />
+      )}
 
       {nutritionWarnings.length > 0 && (
         <div className="notice">

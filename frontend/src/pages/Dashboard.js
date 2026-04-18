@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 import Calendar from '../components/Calendar';
-import { FastingCard, StatsCard, WaterCard, WeightCard } from '../components/Wellness';
+import { AdaptiveTargetCard, FastingCard, StatsCard, StepsCard, WaterCard, WeightCard } from '../components/Wellness';
 import { useAuth } from '../context/AuthContext';
 import { foodEmoji } from '../utils/foodEmoji';
 
@@ -90,6 +90,11 @@ export default function Dashboard() {
         <FastingCard />
       </div>
 
+      <div className="grid-2">
+        <StepsCard />
+        <AdaptiveTargetCard user={user} onApplied={refreshUser} />
+      </div>
+
       <WeightCard user={user} />
 
       <div className="range-toggle">
@@ -162,6 +167,31 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {Array.isArray(data?.micros) && data.micros.some((m) => m.amount > 0) && (
+            <div className="card">
+              <div className="card-header">
+                <h2>Vitamins &amp; minerals</h2>
+                <span className="muted small">{range === 'weekly' ? '7-day total vs 7× DV' : 'vs daily value'}</span>
+              </div>
+              <div className="micro-grid">
+                {data.micros
+                  .filter((m) => m.pct_dv != null)
+                  .map((m) => {
+                    const pct = Math.max(0, Math.min(100, m.pct_dv));
+                    return (
+                      <div className="micro-row" key={m.label}>
+                        <div className="label-line">
+                          <span className="label">{m.label}</span>
+                          <span className="value">{fmtNum(m.amount)} {m.unit} · {m.pct_dv}%</span>
+                        </div>
+                        <div className="micro-bar"><span className={pct >= 100 ? 'hit' : ''} style={{ width: `${pct}%` }} /></div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
 
           {range === 'daily' && data.meals && (
             <>

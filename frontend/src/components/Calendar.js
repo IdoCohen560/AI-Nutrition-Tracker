@@ -67,7 +67,8 @@ export default function Calendar() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await api(`/dashboard/calendar?from=${range.from}&to=${range.to}`);
+        const tz = new Date().getTimezoneOffset();
+        const res = await api(`/dashboard/calendar?from=${range.from}&to=${range.to}&tz=${tz}`);
         if (cancelled) return;
         const map = {};
         res.days.forEach((d) => { map[d.date] = d; });

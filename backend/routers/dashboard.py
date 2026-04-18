@@ -99,6 +99,7 @@ def dashboard_calendar(
     db: Session = Depends(get_db),
     from_date: date | None = Query(None, alias="from"),
     to_date: date | None = Query(None, alias="to"),
+    tz_offset: int = Query(0, alias="tz"),
 ):
     today = utc_today()
     end = to_date or today
@@ -108,8 +109,8 @@ def dashboard_calendar(
     if start_d > end:
         start_d = end
 
-    start_dt, _ = utc_day_range(start_d)
-    _, end_dt = utc_day_range(end)
+    start_dt, _ = utc_day_range(start_d, tz_offset)
+    _, end_dt = utc_day_range(end, tz_offset)
     rows = (
         db.query(FoodLogEntry)
         .filter(
@@ -122,7 +123,8 @@ def dashboard_calendar(
 
     buckets: dict[str, dict] = {}
     for r in rows:
-        key = r.created_at.date().isoformat()
+        local_dt = r.created_at - timedelta(minutes=tz_offset)
+        key = local_dt.date().isoformat()
         b = buckets.setdefault(key, {"cal": 0, "p": 0.0, "c": 0.0, "f": 0.0, "n": 0})
         b["cal"] += r.total_calories or 0
         b["p"] += r.total_protein_g or 0.0
@@ -150,15 +152,16 @@ def dashboard_breakdown(
     db: Session = Depends(get_db),
     date_param: date | None = Query(None, alias="date"),
     range_param: str = Query("daily", alias="range"),
+    tz_offset: int = Query(0, alias="tz"),
 ):
     target = date_param or utc_today()
 
     if range_param == "weekly":
         first_day = target - timedelta(days=6)
-        start, _ = utc_day_range(first_day)
-        _, end = utc_day_range(target)
+        start, _ = utc_day_range(first_day, tz_offset)
+        _, end = utc_day_range(target, tz_offset)
     else:
-        start, end = utc_day_range(target)
+        start, end = utc_day_range(target, tz_offset)
 
     entries = (
         db.query(FoodLogEntry)

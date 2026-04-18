@@ -40,7 +40,8 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     setErr('');
     try {
-      const d = await api(`/dashboard/breakdown?date=${date}&range=${range}`);
+      const tz = new Date().getTimezoneOffset();
+      const d = await api(`/dashboard/breakdown?date=${date}&range=${range}&tz=${tz}`);
       setData(d);
     } catch (ex) {
       setErr(ex.message);

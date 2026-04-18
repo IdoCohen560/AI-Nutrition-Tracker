@@ -11,6 +11,8 @@ from models import FoodLogEntry, User
 from routers.logs import _deserialize_items, _entry_to_out
 from schemas import (
     BreakdownOut,
+    CalendarDayOut,
+    CalendarRangeOut,
     CaloriesBreakdown,
     DashboardTodayOut,
     MacroDetail,
@@ -89,6 +91,57 @@ def dashboard_weekly(user: User = Depends(get_current_user), db: Session = Depen
             )
         )
     return WeeklyDashboardOut(days=days)
+
+
+@router.get("/calendar", response_model=CalendarRangeOut)
+def dashboard_calendar(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    from_date: date | None = Query(None, alias="from"),
+    to_date: date | None = Query(None, alias="to"),
+):
+    today = utc_today()
+    end = to_date or today
+    start_d = from_date or (end - timedelta(days=29))
+    if end > today:
+        end = today
+    if start_d > end:
+        start_d = end
+
+    start_dt, _ = utc_day_range(start_d)
+    _, end_dt = utc_day_range(end)
+    rows = (
+        db.query(FoodLogEntry)
+        .filter(
+            FoodLogEntry.user_id == user.id,
+            FoodLogEntry.created_at >= start_dt,
+            FoodLogEntry.created_at < end_dt,
+        )
+        .all()
+    )
+
+    buckets: dict[str, dict] = {}
+    for r in rows:
+        key = r.created_at.date().isoformat()
+        b = buckets.setdefault(key, {"cal": 0, "p": 0.0, "c": 0.0, "f": 0.0, "n": 0})
+        b["cal"] += r.total_calories or 0
+        b["p"] += r.total_protein_g or 0.0
+        b["c"] += r.total_carbs_g or 0.0
+        b["f"] += r.total_fat_g or 0.0
+        b["n"] += 1
+
+    days = [
+        CalendarDayOut(
+            date=k,
+            consumed_calories=v["cal"],
+            total_protein_g=round(v["p"], 1),
+            total_carbs_g=round(v["c"], 1),
+            total_fat_g=round(v["f"], 1),
+            entries_count=v["n"],
+        )
+        for k, v in sorted(buckets.items())
+    ]
+    return CalendarRangeOut(from_date=start_d.isoformat(), to_date=end.isoformat(), days=days)
 
 
 @router.get("/breakdown", response_model=BreakdownOut)

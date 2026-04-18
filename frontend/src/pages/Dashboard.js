@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
+import Calendar from '../components/Calendar';
 
 const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snacks'];
 const MEAL_EMOJI = { breakfast: '🍳', lunch: '🥗', dinner: '🍽️', snacks: '🥤' };
@@ -99,6 +100,8 @@ export default function Dashboard() {
         />
         <button type="button" className="btn ghost small" onClick={() => setDate(shiftDate(date, 1))}>›</button>
       </div>
+
+      <Calendar />
 
       <div className="range-toggle">
         <button type="button" className={range === 'daily' ? 'active' : ''} onClick={() => setRange('daily')}>Daily</button>

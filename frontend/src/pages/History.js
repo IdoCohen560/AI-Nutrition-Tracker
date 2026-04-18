@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 
 function toISO(d) {
@@ -6,33 +7,40 @@ function toISO(d) {
 }
 
 export default function History() {
+  const [params, setParams] = useSearchParams();
+  const dateParam = params.get('date');
   const end = new Date();
   const start = new Date();
   start.setDate(start.getDate() - 7);
-  const [startDate, setStartDate] = useState(toISO(start));
-  const [endDate, setEndDate] = useState(toISO(end));
+  const [startDate, setStartDate] = useState(dateParam || toISO(start));
+  const [endDate, setEndDate] = useState(dateParam || toISO(end));
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
-  async function load() {
+  const load = useCallback(async (s, e) => {
     setErr('');
     setLoading(true);
     try {
-      const q = `/logs/history?start=${startDate}&end=${endDate}`;
-      const data = await api(q);
+      const data = await api(`/logs/history?start=${s}&end=${e}`);
       setEntries(data);
     } catch (ex) {
       setErr(ex.message);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    load();
+    if (dateParam) {
+      setStartDate(dateParam);
+      setEndDate(dateParam);
+      load(dateParam, dateParam);
+    } else {
+      load(startDate, endDate);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dateParam]);
 
   const byDate = entries.reduce((acc, e) => {
     const d = e.created_at?.slice(0, 10) || '?';
@@ -56,7 +64,7 @@ export default function History() {
           To
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         </label>
-        <button type="button" className="btn primary" onClick={load} disabled={loading}>
+        <button type="button" className="btn primary" onClick={() => { setParams({}); load(startDate, endDate); }} disabled={loading}>
           {loading ? 'Loading…' : 'Apply'}
         </button>
       </div>

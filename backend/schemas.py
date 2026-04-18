@@ -128,6 +128,21 @@ class WeeklyDashboardOut(BaseModel):
     days: list[WeeklyDayOut]
 
 
+class CalendarDayOut(BaseModel):
+    date: str
+    consumed_calories: int
+    total_protein_g: float
+    total_carbs_g: float
+    total_fat_g: float
+    entries_count: int
+
+
+class CalendarRangeOut(BaseModel):
+    from_date: str
+    to_date: str
+    days: list[CalendarDayOut]
+
+
 class RecommendationItemOut(BaseModel):
     food_name: str
     estimated_calories: int

@@ -396,3 +396,22 @@
 .meal-card .card-header { display: flex; justify-content: space-between; align-items: center; }
 .meal-icon { margin-right: 0.5rem; }
 .meal-item { align-items: center; }
+
+/* Calendar widget */
+.calendar-card .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.range-toggle.small { max-width: 180px; margin: 0; }
+.range-toggle.small button { padding: 0.3rem 0.7rem; font-size: 0.85rem; }
+.cal-grid-head { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; color: var(--muted); font-size: 0.75rem; text-align: center; font-weight: 600; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-cell { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; min-height: 64px; padding: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); cursor: pointer; font: inherit; text-align: left; }
+.cal-cell.empty { background: transparent; border: none; cursor: default; min-height: 0; }
+.cal-cell:not(.empty):not(.future):hover { border-color: var(--accent); background: var(--surface); }
+.cal-cell.today { border-color: var(--accent); border-width: 2px; }
+.cal-cell.future { opacity: 0.35; cursor: not-allowed; }
+.cal-cell.has-data { background: var(--surface); }
+.cal-day-num { font-weight: 600; font-size: 0.85rem; }
+.cal-day-stats { margin-top: auto; font-size: 0.7rem; line-height: 1.2; }
+.cal-cal { color: var(--accent); font-weight: 600; }
+.cal-pro { color: var(--muted); }
+.cal-grid.month .cal-cell { min-height: 56px; }
+.cal-grid.month .cal-day-stats { font-size: 0.65rem; }

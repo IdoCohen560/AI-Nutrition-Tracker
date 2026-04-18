@@ -50,16 +50,24 @@ export default function Admin() {
   return (
     <div className="page">
       <h1>Admin</h1>
-      <p className="muted">Manage user roles. Super admin cannot be modified.</p>
+      <div className="card-header">
+        <p className="muted" style={{ margin: 0 }}>
+          {loading ? 'Loading…' : `${users.length} registered user${users.length === 1 ? '' : 's'}`}
+        </p>
+        <button type="button" className="btn ghost small" onClick={load} disabled={loading}>
+          {loading ? '…' : 'Refresh'}
+        </button>
+      </div>
       {err && <div className="error-banner">{err}</div>}
       <div className="card">
-        {loading && <p className="muted">Loading users…</p>}
+        {!loading && users.length === 0 && <p className="muted">No users yet.</p>}
         <table className="data-table">
           <thead>
             <tr>
               <th>ID</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Signed up</th>
               <th></th>
             </tr>
           </thead>
@@ -74,6 +82,9 @@ export default function Admin() {
                   <td>{u.email}</td>
                   <td>
                     <span className={`role-tag role-${u.role}`}>{u.role}</span>
+                  </td>
+                  <td className="muted small">
+                    {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     {locked ? (

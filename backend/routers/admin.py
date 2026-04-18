@@ -15,8 +15,9 @@ ALLOWED_ROLES = {"user", "admin"}
 class AdminUserOut(BaseModel):
     id: int
     email: str
-    role: str
-    onboarding_completed: bool
+    role: str = "user"
+    onboarding_completed: bool = False
+    created_at: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -27,7 +28,17 @@ class RoleUpdate(BaseModel):
 
 @router.get("/users", response_model=list[AdminUserOut])
 def list_users(_: User = Depends(get_admin_user), db: Session = Depends(get_db)):
-    return db.query(User).order_by(User.id.asc()).all()
+    rows = db.query(User).order_by(User.id.desc()).all()
+    return [
+        AdminUserOut(
+            id=u.id,
+            email=u.email or "",
+            role=u.role or "user",
+            onboarding_completed=bool(u.onboarding_completed),
+            created_at=u.created_at.isoformat() if u.created_at else None,
+        )
+        for u in rows
+    ]
 
 
 @router.patch("/users/{user_id}/role", response_model=AdminUserOut)

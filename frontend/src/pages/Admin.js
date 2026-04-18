@@ -97,7 +97,7 @@ export default function Admin() {
                         return (
                           <button
                             type="button"
-                            className="btn primary small"
+                            className={`btn small ${isAdmin ? 'danger' : 'primary'}`}
                             disabled={busyId === u.id}
                             onClick={() => setRole(u, nextRole)}
                           >

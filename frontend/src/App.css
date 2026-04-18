@@ -391,12 +391,58 @@ ul.entry-list > li.entry-row p {
 
 /* ---------- barcode scanner modal ---------- */
 .bc-backdrop {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
-  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem;
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);
+  display: flex; align-items: stretch; justify-content: center; z-index: 100;
 }
-.bc-panel { width: min(520px, 100%); max-height: 95vh; overflow: auto; }
-.bc-region { width: 100%; min-height: 280px; background: #000; border-radius: 8px; overflow: hidden; }
-.bc-region video { width: 100%; height: auto; object-fit: cover; }
+.bc-panel {
+  display: flex; flex-direction: column; width: 100%; max-width: 560px;
+  background: var(--surface, #fff); overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (min-width: 640px) {
+  .bc-backdrop { padding: 1.5rem; align-items: center; }
+  .bc-panel { border-radius: 14px; max-height: 92vh; box-shadow: 0 12px 40px rgba(0,0,0,0.35); }
+}
+.bc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.bc-header h2 { margin: 0; font-size: 1.05rem; }
+.bc-close {
+  border: none; background: transparent; font-size: 1.4rem; line-height: 1;
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer; color: var(--muted);
+}
+.bc-close:hover, .bc-close:focus { background: rgba(0,0,0,0.06); color: var(--text); }
+
+.bc-stage {
+  position: relative; background: #000; flex: 1 1 auto; min-height: 320px;
+  display: flex; align-items: center; justify-content: center;
+}
+.bc-region { width: 100%; height: 100%; min-height: 320px; }
+.bc-region video { width: 100% !important; height: 100% !important; object-fit: cover; }
+.bc-region > div:first-child { width: 100% !important; height: 100% !important; }
+.bc-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.65); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.75rem; padding: 1.5rem; text-align: center;
+}
+.bc-overlay-title { font-size: 1rem; font-weight: 600; margin: 0; }
+.bc-overlay-body { font-size: 0.9rem; margin: 0; opacity: 0.85; max-width: 30ch; line-height: 1.4; }
+.bc-hint {
+  position: absolute; bottom: 0.75rem; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.55); color: #fff; font-size: 0.85rem;
+  padding: 0.35rem 0.75rem; border-radius: 999px; pointer-events: none;
+}
+
+.bc-manual { padding: 0.85rem 1rem 1.1rem; border-top: 1px solid var(--border); background: var(--surface); }
+.bc-manual label { display: block; margin-bottom: 0.4rem; }
+.bc-manual-row { display: flex; gap: 0.5rem; }
+.bc-manual-row input {
+  flex: 1; padding: 0.7rem 0.9rem; font-size: 1rem;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+}
+.bc-manual-row .btn { flex: 0 0 auto; padding: 0.7rem 1rem; }
 
 /* ---------- recipe import ---------- */
 .recipe-import { margin-top: 0.75rem; }
@@ -435,3 +481,30 @@ ul.entry-list > li.entry-row p {
 /* ---------- steps card ---------- */
 .steps-input { display: flex; gap: 0.5rem; align-items: center; max-width: 360px; }
 .steps-input input { flex: 1; }
+
+/* ---------- delete-entry confirm + undo toast ---------- */
+.confirm-panel {
+  background: var(--surface); border-radius: 14px; padding: 1.25rem;
+  width: min(440px, 94vw); box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+}
+.confirm-panel h2 { margin: 0 0 0.35rem; font-size: 1.1rem; }
+.confirm-entry {
+  background: rgba(0,0,0,0.04); border-radius: 8px; padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--danger);
+}
+
+.undo-toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  background: #2b2722; color: #fff; padding: 0.75rem 1rem;
+  border-radius: 10px; display: flex; align-items: center; gap: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 120; max-width: calc(100vw - 2rem); font-size: 0.9rem;
+  animation: undo-rise 0.25s ease-out;
+}
+.undo-toast .btn.linkish { color: #ffd58a; padding: 0.2rem 0.5rem; font-weight: 600; }
+.undo-toast .btn.linkish:hover { color: #fff; }
+@keyframes undo-rise {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}

@@ -169,6 +169,8 @@ function EditHistory({ today, monthStart, initialDate }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  const [confirmEntry, setConfirmEntry] = useState(null); // entry pending deletion
+  const [undoItem, setUndoItem] = useState(null); // { entry, date } — most recent delete
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => shiftDays(weekStart, i)),
@@ -191,15 +193,47 @@ function EditHistory({ today, monthStart, initialDate }) {
 
   useEffect(() => { load(selectedDate); }, [selectedDate, load]);
 
-  async function deleteEntry(id) {
-    if (!window.confirm('Delete this entry?')) return;
+  async function performDelete(entry) {
+    setConfirmEntry(null);
     try {
-      await api(`/logs/${id}`, { method: 'DELETE' });
+      await api(`/logs/${entry.id}`, { method: 'DELETE' });
+      setUndoItem({ entry, date: selectedDate, at: Date.now() });
       load(selectedDate);
     } catch (ex) {
       setErr(ex.message);
     }
   }
+
+  async function undoDelete() {
+    if (!undoItem) return;
+    const { entry, date } = undoItem;
+    const tzOffset = new Date().getTimezoneOffset();
+    setUndoItem(null);
+    try {
+      await api('/logs', {
+        method: 'POST',
+        body: JSON.stringify({
+          meal_type: entry.meal_type,
+          description_text: entry.description_text,
+          items: entry.items || [],
+          parse_confidence: entry.parse_confidence,
+          confirmed: true,
+          for_date: date,
+          tz_offset: tzOffset,
+        }),
+      });
+      load(selectedDate);
+    } catch (ex) {
+      setErr(`Undo failed: ${ex.message}`);
+    }
+  }
+
+  // Auto-dismiss undo toast after 10 seconds
+  useEffect(() => {
+    if (!undoItem) return;
+    const id = setTimeout(() => setUndoItem(null), 10000);
+    return () => clearTimeout(id);
+  }, [undoItem]);
 
   const totalKcal = entries.reduce((s, e) => s + e.total_calories, 0);
   const canEdit = selectedDate >= monthStart && selectedDate <= today;
@@ -271,7 +305,7 @@ function EditHistory({ today, monthStart, initialDate }) {
                   {e.description_text || e.items?.map((i) => i.name).join(', ')}
                 </p>
               </div>
-              <button type="button" className="btn danger ghost small" onClick={() => deleteEntry(e.id)}>
+              <button type="button" className="btn danger ghost small" onClick={() => setConfirmEntry(e)}>
                 Delete
               </button>
             </li>
@@ -285,6 +319,46 @@ function EditHistory({ today, monthStart, initialDate }) {
           </div>
         )}
       </div>
+
+      {confirmEntry && (
+        <div className="bc-backdrop" role="dialog" aria-modal="true">
+          <div className="confirm-panel">
+            <h2>Delete this entry?</h2>
+            <p className="muted small" style={{ margin: '0 0 0.75rem' }}>
+              From {fmtDate(selectedDate)}
+            </p>
+            <div className="confirm-entry">
+              <strong>{confirmEntry.meal_type}</strong> · {confirmEntry.total_calories} kcal
+              <p className="small muted" style={{ margin: '0.25rem 0 0' }}>
+                {confirmEntry.description_text
+                  || confirmEntry.items?.map((i) => i.name).join(', ')
+                  || '(no description)'}
+              </p>
+            </div>
+            <p className="muted small" style={{ marginTop: '0.75rem' }}>
+              You'll have 10 seconds to undo.
+            </p>
+            <div className="btn-row">
+              <button type="button" className="btn ghost" onClick={() => setConfirmEntry(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn danger" onClick={() => performDelete(confirmEntry)}>
+                Delete entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {undoItem && (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <span>
+            Deleted <strong>{undoItem.entry.meal_type}</strong> from {fmtDate(undoItem.date)}
+          </span>
+          <button type="button" className="btn linkish" onClick={undoDelete}>Undo</button>
+          <button type="button" className="btn linkish" aria-label="Dismiss" onClick={() => setUndoItem(null)}>✕</button>
+        </div>
+      )}
     </>
   );
 }

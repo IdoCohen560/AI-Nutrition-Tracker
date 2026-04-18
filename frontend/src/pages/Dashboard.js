@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 import Calendar from '../components/Calendar';
+import { foodEmoji } from '../utils/foodEmoji';
 
 const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snacks'];
 const MEAL_EMOJI = { breakfast: '🍳', lunch: '🥗', dinner: '🍽️', snacks: '🥤' };
@@ -167,7 +168,7 @@ export default function Dashboard() {
                         {meal.items.map((it, i) => (
                           <li key={i} className="entry-row meal-item">
                             <div>
-                              <span className="meal-icon">{MEAL_EMOJI[mt]}</span>
+                              <span className="meal-icon">{foodEmoji(it.name, mt)}</span>
                               <strong>{it.name}</strong>
                               <span className="muted small"> · {it.serving || `${it.quantity || 1} serving`}</span>
                             </div>

@@ -81,7 +81,9 @@
 .btn-row {
   display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; align-items: center;
 }
-.btn-row .btn { flex: 0 0 auto; }
+.btn-row .btn { flex: 1 1 auto; min-width: 140px; }
+/* In narrow card columns (grid-2 cells), each button gets its own full-width row */
+.grid-2 .btn-row .btn { flex: 1 1 100%; }
 
 /* ---------- cards + layout primitives ---------- */
 .card {

@@ -50,16 +50,17 @@ export default function Admin() {
   return (
     <div className="page">
       <h1>Admin</h1>
-      <div className="card-header">
-        <p className="muted" style={{ margin: 0 }}>
-          {loading ? 'Loading…' : `${users.length} registered user${users.length === 1 ? '' : 's'}`}
-        </p>
-        <button type="button" className="btn ghost small" onClick={load} disabled={loading}>
-          {loading ? '…' : 'Refresh'}
-        </button>
-      </div>
+      <p className="muted">Manage user roles. Super admin cannot be modified.</p>
       {err && <div className="error-banner">{err}</div>}
       <div className="card">
+        <div className="card-header admin-toolbar">
+          <h2>
+            {loading ? 'Loading…' : `${users.length} registered user${users.length === 1 ? '' : 's'}`}
+          </h2>
+          <button type="button" className="btn ghost small" onClick={load} disabled={loading}>
+            {loading ? '…' : 'Refresh'}
+          </button>
+        </div>
         {!loading && users.length === 0 && <p className="muted">No users yet.</p>}
         <table className="data-table">
           <thead>

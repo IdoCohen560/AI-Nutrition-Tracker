@@ -365,98 +365,31 @@
   gap: 0.75rem;
 }
 
-/* === NutriBoo Dashboard === */
-.nb-dashboard { max-width: 760px; margin: 0 auto; padding: 1rem; }
 
-.nb-toprow {
-  display: flex; align-items: center; justify-content: center;
-  gap: 0.75rem; margin: 0.5rem 0 1rem;
-}
-.nb-iconbtn {
-  background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-radius: 999px;
-  width: 36px; height: 36px; cursor: pointer; font-size: 1.1rem;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.nb-iconbtn.ghost { background: transparent; border: none; color: var(--muted); }
-.nb-iconbtn:hover { background: var(--surface-2); }
-.nb-dateinput {
-  background: var(--surface); color: var(--text);
-  border: 1px solid var(--border); border-radius: 8px;
-  padding: 0.4rem 0.6rem; font: inherit;
-}
-.nb-datelabel { color: var(--accent); font-weight: 600; }
+/* Dashboard additions */
+.date-scrubber { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; }
+.date-input { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.5rem; font: inherit; }
 
-.nb-toggle {
-  display: flex; background: var(--surface); border-radius: 999px;
-  padding: 4px; max-width: 320px; margin: 0 auto 1.25rem;
-  border: 1px solid var(--border);
-}
-.nb-toggle button {
-  flex: 1; background: transparent; border: 0; color: var(--muted);
-  padding: 0.5rem 1rem; border-radius: 999px; font-weight: 600; cursor: pointer;
-}
-.nb-toggle button.active { background: var(--surface-2); color: var(--accent); }
+.range-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; max-width: 320px; margin: 0 auto 1.25rem; }
+.range-toggle button { flex: 1; background: transparent; border: 0; color: var(--muted); padding: 0.45rem 1rem; border-radius: 999px; font-weight: 600; cursor: pointer; }
+.range-toggle button.active { background: var(--accent); color: var(--surface); }
 
-.nb-card {
-  background: var(--surface); border-radius: var(--radius);
-  padding: 1.25rem; margin-bottom: 1rem; border: 1px solid var(--border);
-}
-.nb-card-title { margin: 0 0 0.75rem; font-size: 1rem; color: var(--muted); font-weight: 600; }
+.ring-wrap { position: relative; max-width: 240px; margin: 0 auto; }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.ring-num { font-size: 2.2rem; line-height: 1; font-family: Fraunces, Georgia, serif; }
 
-.nb-ring-card { display: flex; flex-direction: column; align-items: stretch; }
-.nb-ring { position: relative; width: 100%; max-width: 280px; margin: 0 auto; }
-.nb-ring-center {
-  position: absolute; inset: 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; pointer-events: none;
-}
-.nb-ring-num { font-size: 2.4rem; font-weight: 700; line-height: 1; }
-.nb-ring-label { color: var(--muted); margin-top: 0.25rem; }
+.cal-list { list-style: none; padding: 0; margin: 1rem 0 0; }
+.cal-list li { display: flex; justify-content: space-between; padding: 0.5rem 0; }
+.cal-list li.divider { border-top: 1px solid var(--border); margin-top: 0.25rem; padding-top: 0.7rem; }
 
-.nb-cal-list { list-style: none; padding: 0; margin: 1rem 0 0; }
-.nb-cal-list li {
-  display: flex; justify-content: space-between;
-  padding: 0.55rem 0; color: var(--text);
-}
-.nb-cal-list li.nb-divider { border-top: 1px solid var(--border); margin-top: 0.25rem; padding-top: 0.7rem; }
-.nb-tip { color: var(--muted); font-size: 0.875rem; margin-top: 0.75rem; }
+.macro-legend { list-style: none; padding: 0; margin: 1rem 0 0; }
+.macro-row { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 0.75rem; align-items: center; padding: 0.4rem 0; }
+.macro-row.sub { padding-left: 1rem; color: var(--muted); font-size: 0.9rem; }
+.macro-dot { width: 10px; height: 10px; border-radius: 999px; }
+.macro-dot.transparent { background: transparent; }
+.macro-val { font-variant-numeric: tabular-nums; }
+.macro-dv { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
 
-.nb-pie-wrap { display: flex; justify-content: center; }
-.nb-macro-legend { list-style: none; padding: 0; margin: 1rem 0 0; }
-.nb-macro-row {
-  display: grid; grid-template-columns: 18px 1fr auto auto; gap: 0.75rem;
-  align-items: center; padding: 0.45rem 0;
-}
-.nb-macro-row.sub { padding-left: 1rem; color: var(--muted); font-size: 0.9rem; }
-.nb-dot { width: 10px; height: 10px; border-radius: 999px; }
-.nb-dot.transparent { background: transparent; }
-.nb-macro-label { font-weight: 500; }
-.nb-macro-row.sub .nb-macro-label { font-weight: 400; }
-.nb-macro-grams { color: var(--text); font-variant-numeric: tabular-nums; }
-.nb-macro-dv { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
-
-.nb-meals { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem; }
-.nb-meal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-.nb-meal-header h3 { margin: 0; font-size: 1rem; }
-
-.nb-item-list { list-style: none; padding: 0; margin: 0; }
-.nb-item {
-  display: grid; grid-template-columns: 32px 1fr auto;
-  gap: 0.75rem; align-items: center; padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
-}
-.nb-item:last-child { border-bottom: 0; }
-.nb-item-icon { font-size: 1.4rem; }
-.nb-item-name { font-weight: 500; }
-.nb-item-serving { color: var(--muted); font-size: 0.85rem; }
-.nb-item-cals { font-variant-numeric: tabular-nums; }
-
-.nb-suggest { color: var(--muted); margin: 0.5rem 0; }
-
-.nb-addfood {
-  display: inline-block; margin-top: 0.85rem;
-  background: transparent; color: var(--accent); border: 1px solid var(--accent);
-  padding: 0.45rem 1.1rem; border-radius: 999px;
-  text-decoration: none; font-weight: 600; font-size: 0.9rem;
-}
-.nb-addfood:hover { background: var(--accent); color: #1a1209; }
+.meal-card .card-header { display: flex; justify-content: space-between; align-items: center; }
+.meal-icon { margin-right: 0.5rem; }
+.meal-item { align-items: center; }

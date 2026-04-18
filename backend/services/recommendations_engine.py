@@ -19,6 +19,40 @@ _FALLBACK_HEALTHY = [
     "Oatmeal",
 ]
 
+_DIET_BLOCK_KEYWORDS = {
+    "vegetarian": {"chicken", "beef", "pork", "lamb", "turkey", "bacon", "sausage", "fish", "salmon", "tuna", "shrimp", "ham", "steak"},
+    "vegan": {"chicken", "beef", "pork", "lamb", "turkey", "bacon", "sausage", "fish", "salmon", "tuna", "shrimp", "ham", "steak", "egg", "milk", "cheese", "yogurt", "butter", "honey"},
+    "pescatarian": {"chicken", "beef", "pork", "lamb", "turkey", "bacon", "sausage", "ham", "steak"},
+    "gluten_free": {"bread", "pasta", "noodle", "wheat", "bagel", "tortilla", "couscous", "crackers", "barley"},
+    "dairy_free": {"milk", "cheese", "yogurt", "butter", "cream", "ice cream", "latte"},
+    "nut_free": {"peanut", "almond", "cashew", "walnut", "pecan", "hazelnut", "pistachio", "nut"},
+    "halal": {"pork", "bacon", "ham", "alcohol", "wine", "beer"},
+    "kosher": {"pork", "bacon", "ham", "shrimp", "lobster", "crab", "clam"},
+}
+
+
+def _list_field(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    try:
+        v = json.loads(raw)
+        return [str(x).lower().strip() for x in v if str(x).strip()] if isinstance(v, list) else []
+    except json.JSONDecodeError:
+        return []
+
+
+def _is_blocked(name: str, allergies: list[str], dislikes: list[str], restrictions: list[str]) -> bool:
+    n = name.lower()
+    for a in allergies + dislikes:
+        if a and a in n:
+            return True
+    for r in restrictions:
+        block = _DIET_BLOCK_KEYWORDS.get(r, set())
+        for kw in block:
+            if kw in n:
+                return True
+    return False
+
 _cache: dict[int, tuple[datetime, RecommendationsOut]] = {}
 
 
@@ -110,11 +144,18 @@ def build_recommendations(db: Session, user: User) -> RecommendationsOut:
             return cached[1]
         return RecommendationsOut(items=[], remaining_calories=0, mode="fallback")
 
+    allergies = _list_field(user.allergies)
+    dislikes = _list_field(user.dislikes)
+    restrictions = _list_field(user.dietary_restrictions)
+
     today_names = _today_food_counts(db, user.id)
     hist = _food_counts_from_history(db, user.id)
-    top_names = _top_logged_names(hist, 10)
+    top_names = _top_logged_names(hist, 20)
     excluded = {n for n, c in today_names.items() if c >= 3}
-    candidates = [n for n in top_names if n not in excluded]
+    candidates = [
+        n for n in top_names
+        if n not in excluded and not _is_blocked(n, allergies, dislikes, restrictions)
+    ]
     total_user_entries = db.query(FoodLogEntry).filter(FoodLogEntry.user_id == user.id).count()
 
     budget = remaining if remaining is not None else 0
@@ -145,7 +186,10 @@ def build_recommendations(db: Session, user: User) -> RecommendationsOut:
     mode: str = "normal"
     if total_user_entries < 3 or len(candidates) < 1:
         mode = "fallback"
-        candidates = [x.lower() for x in _FALLBACK_HEALTHY]
+        candidates = [
+            x.lower() for x in _FALLBACK_HEALTHY
+            if not _is_blocked(x, allergies, dislikes, restrictions)
+        ]
 
     ranked: list[tuple[str, int]] = []
     for raw_name in candidates:

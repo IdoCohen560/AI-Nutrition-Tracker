@@ -17,6 +17,17 @@ class User(Base):
     token_version = Column(Integer, default=0)
     role = Column(String(32), default="user", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Profile
+    sex = Column(String(16), nullable=True)            # male/female/other
+    date_of_birth = Column(String(10), nullable=True)  # YYYY-MM-DD
+    height_cm = Column(Float, nullable=True)
+    weight_kg = Column(Float, nullable=True)
+    activity_level = Column(String(32), nullable=True)  # sedentary/light/moderate/active/very_active
+    fitness_goal = Column(String(32), nullable=True)    # lose/maintain/gain/recomp
+    dietary_restrictions = Column(Text, default="[]")   # JSON array of strings
+    allergies = Column(Text, default="[]")              # JSON array
+    dislikes = Column(Text, default="[]")               # JSON array
+    notes = Column(Text, default="")                    # free-text preferences
 
     entries = relationship("FoodLogEntry", back_populates="user", cascade="all, delete-orphan")
 

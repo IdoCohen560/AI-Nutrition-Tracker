@@ -27,6 +27,17 @@ class UserOut(BaseModel):
     daily_calorie_goal: int | None
     onboarding_completed: bool
     role: str = "user"
+    sex: str | None = None
+    date_of_birth: str | None = None
+    height_cm: float | None = None
+    weight_kg: float | None = None
+    activity_level: str | None = None
+    fitness_goal: str | None = None
+    dietary_restrictions: list[str] = []
+    allergies: list[str] = []
+    dislikes: list[str] = []
+    notes: str = ""
+    bmi: float | None = None
 
     model_config = {"from_attributes": True}
 
@@ -34,6 +45,16 @@ class UserOut(BaseModel):
 class UserUpdate(BaseModel):
     daily_calorie_goal: int | None = None
     onboarding_completed: bool | None = None
+    sex: str | None = None
+    date_of_birth: str | None = None
+    height_cm: float | None = None
+    weight_kg: float | None = None
+    activity_level: str | None = None
+    fitness_goal: str | None = None
+    dietary_restrictions: list[str] | None = None
+    allergies: list[str] | None = None
+    dislikes: list[str] | None = None
+    notes: str | None = None
 
     @field_validator("daily_calorie_goal")
     @classmethod

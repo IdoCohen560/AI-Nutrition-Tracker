@@ -24,8 +24,10 @@ app.add_middleware(
 def _startup():
     from scripts.migrate_v2 import run as migrate_v2
     from scripts.migrate_v3 import run as migrate_v3
+    from scripts.migrate_v4 import run as migrate_v4
     migrate_v2()
     migrate_v3()
+    migrate_v4()
     Base.metadata.create_all(bind=engine)
 
 

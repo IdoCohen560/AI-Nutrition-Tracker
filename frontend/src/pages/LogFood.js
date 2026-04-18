@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 
@@ -42,6 +42,46 @@ export default function LogFood() {
   const [nlpError, setNlpError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [recent, setRecent] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef(null);
+
+  useEffect(() => {
+    api('/stats?tz=' + new Date().getTimezoneOffset()).then((s) => setRecent(s.recent_foods || [])).catch(() => {});
+    api('/favorites').then(setFavorites).catch(() => {});
+  }, []);
+
+  function appendToText(s) {
+    setText((cur) => (cur ? `${cur}, ${s}` : s));
+  }
+
+  async function toggleFavorite(name) {
+    const exists = favorites.some((f) => f.toLowerCase() === name.toLowerCase());
+    const next = exists ? favorites.filter((f) => f.toLowerCase() !== name.toLowerCase()) : [...favorites, name];
+    setFavorites(next);
+    try { await api('/favorites', { method: 'PUT', body: JSON.stringify({ foods: next }) }); } catch { /* ignore */ }
+  }
+
+  function startVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setErr('Voice not supported in this browser. Use Chrome or Edge.'); return; }
+    if (listening) { recogRef.current?.stop(); return; }
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = false;
+    r.lang = 'en-US';
+    r.onresult = (ev) => {
+      const t = Array.from(ev.results).map((res) => res[0].transcript).join(' ');
+      setText((cur) => (cur ? `${cur} ${t}` : t));
+    };
+    r.onend = () => setListening(false);
+    r.onerror = (e) => { setErr(`Voice error: ${e.error || 'unknown'}`); setListening(false); };
+    recogRef.current = r;
+    setListening(true);
+    setErr('');
+    r.start();
+  }
 
   async function parseMeal() {
     setErr('');
@@ -143,9 +183,36 @@ export default function LogFood() {
             placeholder="e.g. 2 eggs, toast with butter, and black coffee"
           />
         </label>
+        {favorites.length > 0 && (
+          <div className="quick-row">
+            <span className="muted small">Favorites:</span>
+            {favorites.map((f) => (
+              <button key={f} type="button" className="chip" onClick={() => appendToText(f)}>{f}</button>
+            ))}
+          </div>
+        )}
+        {recent.length > 0 && (
+          <div className="quick-row">
+            <span className="muted small">Recent:</span>
+            {recent.map((f) => {
+              const fav = favorites.some((x) => x.toLowerCase() === f.toLowerCase());
+              return (
+                <span key={f} className="chip-recent">
+                  <button type="button" className="chip" onClick={() => appendToText(f)}>{f}</button>
+                  <button type="button" className="star" title={fav ? 'Unfavorite' : 'Add to favorites'} onClick={() => toggleFavorite(f)}>
+                    {fav ? '★' : '☆'}
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
         <div className="btn-row">
           <button type="button" className="btn primary" disabled={busy || !text.trim()} onClick={parseMeal}>
             {busy ? 'Working…' : 'Parse & preview'}
+          </button>
+          <button type="button" className={`btn ghost ${listening ? 'active' : ''}`} onClick={startVoice}>
+            {listening ? '⏺ Listening…' : '🎤 Voice'}
           </button>
         </div>
         {nlpError && <div className="error-banner">{nlpError}</div>}

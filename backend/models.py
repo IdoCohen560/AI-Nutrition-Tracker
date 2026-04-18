@@ -28,6 +28,10 @@ class User(Base):
     allergies = Column(Text, default="[]")              # JSON array
     dislikes = Column(Text, default="[]")               # JSON array
     notes = Column(Text, default="")                    # free-text preferences
+    use_metric = Column(Boolean, default=True, nullable=False)
+    favorite_foods = Column(Text, default="[]")          # JSON array of food names
+    fast_start = Column(DateTime, nullable=True)         # active fast started at
+    fast_target_hours = Column(Float, nullable=True)     # current fast target
 
     entries = relationship("FoodLogEntry", back_populates="user", cascade="all, delete-orphan")
 
@@ -54,6 +58,24 @@ class FoodLogEntry(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="entries")
+
+
+class WeightEntry(Base):
+    __tablename__ = "weight_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    weight_kg = Column(Float, nullable=False)
+    recorded_for = Column(String(10), nullable=False)  # YYYY-MM-DD local
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class WaterEntry(Base):
+    __tablename__ = "water_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    cups = Column(Integer, nullable=False, default=1)
+    recorded_for = Column(String(10), nullable=False)  # YYYY-MM-DD local
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class FoodItemsCache(Base):

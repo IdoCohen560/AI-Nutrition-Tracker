@@ -23,6 +23,7 @@ export default function AppLayout() {
             Dashboard
           </NavLink>
           <NavLink to="/log">Log food</NavLink>
+          <NavLink to="/photo">📸 Photo</NavLink>
           <NavLink to="/history">History</NavLink>
           <NavLink to="/settings">Settings</NavLink>
           {isAdmin && <NavLink to="/admin">Admin</NavLink>}

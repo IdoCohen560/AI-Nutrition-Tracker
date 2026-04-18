@@ -54,8 +54,13 @@ function bmiLabel(b) {
 export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', busy = false, children }) {
   const [sex, setSex] = useState(initial?.sex || '');
   const [dob, setDob] = useState(initial?.date_of_birth || '');
-  const [height, setHeight] = useState(initial?.height_cm?.toString() || '');
-  const [weight, setWeight] = useState(initial?.weight_kg?.toString() || '');
+  const initMetric = initial?.use_metric ?? true;
+  const [height, setHeight] = useState(
+    initial?.height_cm ? (initMetric ? initial.height_cm : Math.round(initial.height_cm / 2.54 * 10) / 10).toString() : ''
+  );
+  const [weight, setWeight] = useState(
+    initial?.weight_kg ? (initMetric ? initial.weight_kg : Math.round(initial.weight_kg * 2.20462 * 10) / 10).toString() : ''
+  );
   const [activity, setActivity] = useState(initial?.activity_level || '');
   const [goal, setGoal] = useState(initial?.fitness_goal || '');
   const [restrictions, setRestrictions] = useState(new Set(initial?.dietary_restrictions || []));
@@ -63,14 +68,18 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
   const [dislikes, setDislikes] = useState((initial?.dislikes || []).join(', '));
   const [notes, setNotes] = useState(initial?.notes || '');
   const [calorieGoal, setCalorieGoal] = useState(initial?.daily_calorie_goal?.toString() || '');
+  const [useMetric, setUseMetric] = useState(initial?.use_metric ?? true);
   const [err, setErr] = useState('');
 
   useEffect(() => {
     if (!initial) return;
     setSex(initial.sex || '');
     setDob(initial.date_of_birth || '');
-    setHeight(initial.height_cm?.toString() || '');
-    setWeight(initial.weight_kg?.toString() || '');
+    {
+      const m = initial.use_metric ?? true;
+      setHeight(initial.height_cm ? (m ? initial.height_cm : Math.round(initial.height_cm / 2.54 * 10) / 10).toString() : '');
+      setWeight(initial.weight_kg ? (m ? initial.weight_kg : Math.round(initial.weight_kg * 2.20462 * 10) / 10).toString() : '');
+    }
     setActivity(initial.activity_level || '');
     setGoal(initial.fitness_goal || '');
     setRestrictions(new Set(initial.dietary_restrictions || []));
@@ -78,11 +87,14 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
     setDislikes((initial.dislikes || []).join(', '));
     setNotes(initial.notes || '');
     setCalorieGoal(initial.daily_calorie_goal?.toString() || '');
+    setUseMetric(initial.use_metric ?? true);
   }, [initial]);
 
   const h = parseFloat(height);
   const w = parseFloat(weight);
-  const currentBmi = bmi(h, w);
+  const hCm = useMetric ? h : h * 2.54;
+  const wKg = useMetric ? w : w / 2.20462;
+  const currentBmi = bmi(hCm, wKg);
 
   function toggleRestriction(v) {
     setRestrictions((prev) => {
@@ -99,11 +111,14 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
   async function handleSubmit(e) {
     e.preventDefault();
     setErr('');
+    const heightVal = height ? parseFloat(height) : null;
+    const weightVal = weight ? parseFloat(weight) : null;
     const body = {
       sex: sex || null,
       date_of_birth: dob || null,
-      height_cm: height ? parseFloat(height) : null,
-      weight_kg: weight ? parseFloat(weight) : null,
+      height_cm: heightVal != null ? (useMetric ? heightVal : heightVal * 2.54) : null,
+      weight_kg: weightVal != null ? (useMetric ? weightVal : weightVal / 2.20462) : null,
+      use_metric: useMetric,
       activity_level: activity || null,
       fitness_goal: goal || null,
       dietary_restrictions: Array.from(restrictions),
@@ -131,7 +146,13 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
   return (
     <form onSubmit={handleSubmit}>
       <div className="card">
-        <h2>Basics</h2>
+        <div className="card-header">
+          <h2>Basics</h2>
+          <div className="range-toggle small" style={{ maxWidth: 160 }}>
+            <button type="button" className={useMetric ? 'active' : ''} onClick={() => setUseMetric(true)}>Metric</button>
+            <button type="button" className={!useMetric ? 'active' : ''} onClick={() => setUseMetric(false)}>Imperial</button>
+          </div>
+        </div>
         <div className="grid-2">
           <label>
             Sex
@@ -144,12 +165,12 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
             <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
           </label>
           <label>
-            Height (cm)
-            <input type="number" step="0.1" min="50" max="250" value={height} onChange={(e) => setHeight(e.target.value)} />
+            Height ({useMetric ? 'cm' : 'in'})
+            <input type="number" step="0.1" value={height} onChange={(e) => setHeight(e.target.value)} />
           </label>
           <label>
-            Weight (kg)
-            <input type="number" step="0.1" min="20" max="400" value={weight} onChange={(e) => setWeight(e.target.value)} />
+            Weight ({useMetric ? 'kg' : 'lb'})
+            <input type="number" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </label>
         </div>
         {currentBmi != null && (

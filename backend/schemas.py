@@ -38,6 +38,7 @@ class UserOut(BaseModel):
     dislikes: list[str] = []
     notes: str = ""
     bmi: float | None = None
+    use_metric: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -55,6 +56,7 @@ class UserUpdate(BaseModel):
     allergies: list[str] | None = None
     dislikes: list[str] | None = None
     notes: str | None = None
+    use_metric: bool | None = None
 
     @field_validator("daily_calorie_goal")
     @classmethod

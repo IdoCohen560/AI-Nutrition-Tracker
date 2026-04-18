@@ -597,3 +597,20 @@ ul.entry-list > li.entry-row {
 .admin-table td:nth-child(2) { word-break: break-word; }
 .admin-table .btn.small { padding: 0.35rem 0.85rem; }
 .admin-toolbar h2 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text); }
+
+/* Wellness widgets */
+.weight-input { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; }
+.weight-input input { flex: 1 1 auto; min-width: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.water-cells { display: flex; flex-wrap: wrap; gap: 4px; margin: 0.5rem 0; font-size: 1.4rem; }
+.water-cell { opacity: 0.25; transition: opacity 0.15s; }
+.water-cell.on { opacity: 1; }
+.stats-card { padding: 1rem 1.5rem; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.stats-grid .stat-big { font-family: Fraunces, Georgia, serif; font-size: 2rem; line-height: 1; }
+
+/* LogFood quick rows */
+.quick-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.5rem 0; }
+.quick-row .muted { margin-right: 0.25rem; }
+.chip-recent { display: inline-flex; align-items: center; gap: 2px; }
+.star { background: none; border: none; color: var(--accent-2); cursor: pointer; font-size: 1.1rem; padding: 0 2px; }
+.btn.ghost.active { color: var(--danger); border-color: var(--danger); }

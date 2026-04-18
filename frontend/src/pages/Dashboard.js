@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 import Calendar from '../components/Calendar';
+import { FastingCard, StatsCard, WaterCard, WeightCard } from '../components/Wellness';
+import { useAuth } from '../context/AuthContext';
 import { foodEmoji } from '../utils/foodEmoji';
 
 const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snacks'];
@@ -34,6 +36,7 @@ function todayISO() {
 
 export default function Dashboard() {
   const [date] = useState(todayISO());
+  const { user } = useAuth();
   const [range, setRange] = useState('daily');
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -79,6 +82,15 @@ export default function Dashboard() {
       <h1 className="date-header">{fmtDate(date)}</h1>
 
       <Calendar />
+
+      <StatsCard refreshKey={data?.calories?.consumed || 0} />
+
+      <div className="grid-2">
+        <WaterCard />
+        <FastingCard />
+      </div>
+
+      <WeightCard user={user} />
 
       <div className="range-toggle">
         <button type="button" className={range === 'daily' ? 'active' : ''} onClick={() => setRange('daily')}>Daily</button>

@@ -54,10 +54,14 @@ function bmiLabel(b) {
 export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', busy = false, children }) {
   const [sex, setSex] = useState(initial?.sex || '');
   const [dob, setDob] = useState(initial?.date_of_birth || '');
-  const initMetric = initial?.use_metric ?? true;
-  const [height, setHeight] = useState(
-    initial?.height_cm ? (initMetric ? initial.height_cm : Math.round(initial.height_cm / 2.54 * 10) / 10).toString() : ''
+  const initMetric = initial?.use_metric ?? false;
+  // Height: metric uses cm; imperial uses ft + in split.
+  const initTotalIn = initial?.height_cm ? initial.height_cm / 2.54 : null;
+  const [heightCm, setHeightCm] = useState(
+    initial?.height_cm ? String(initial.height_cm) : ''
   );
+  const [heightFt, setHeightFt] = useState(initTotalIn != null ? String(Math.floor(initTotalIn / 12)) : '');
+  const [heightIn, setHeightIn] = useState(initTotalIn != null ? String(Math.round(initTotalIn - Math.floor(initTotalIn / 12) * 12)) : '');
   const [weight, setWeight] = useState(
     initial?.weight_kg ? (initMetric ? initial.weight_kg : Math.round(initial.weight_kg * 2.20462 * 10) / 10).toString() : ''
   );
@@ -68,7 +72,7 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
   const [dislikes, setDislikes] = useState((initial?.dislikes || []).join(', '));
   const [notes, setNotes] = useState(initial?.notes || '');
   const [calorieGoal, setCalorieGoal] = useState(initial?.daily_calorie_goal?.toString() || '');
-  const [useMetric, setUseMetric] = useState(initial?.use_metric ?? true);
+  const [useMetric, setUseMetric] = useState(initial?.use_metric ?? false);
   const [err, setErr] = useState('');
 
   useEffect(() => {
@@ -76,8 +80,15 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
     setSex(initial.sex || '');
     setDob(initial.date_of_birth || '');
     {
-      const m = initial.use_metric ?? true;
-      setHeight(initial.height_cm ? (m ? initial.height_cm : Math.round(initial.height_cm / 2.54 * 10) / 10).toString() : '');
+      const m = initial.use_metric ?? false;
+      setHeightCm(initial.height_cm ? String(initial.height_cm) : '');
+      if (initial.height_cm) {
+        const totIn = initial.height_cm / 2.54;
+        setHeightFt(String(Math.floor(totIn / 12)));
+        setHeightIn(String(Math.round(totIn - Math.floor(totIn / 12) * 12)));
+      } else {
+        setHeightFt(''); setHeightIn('');
+      }
       setWeight(initial.weight_kg ? (m ? initial.weight_kg : Math.round(initial.weight_kg * 2.20462 * 10) / 10).toString() : '');
     }
     setActivity(initial.activity_level || '');
@@ -87,12 +98,20 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
     setDislikes((initial.dislikes || []).join(', '));
     setNotes(initial.notes || '');
     setCalorieGoal(initial.daily_calorie_goal?.toString() || '');
-    setUseMetric(initial.use_metric ?? true);
+    setUseMetric(initial.use_metric ?? false);
   }, [initial]);
 
-  const h = parseFloat(height);
   const w = parseFloat(weight);
-  const hCm = useMetric ? h : h * 2.54;
+  // Resolve height in cm regardless of unit system
+  let hCm = null;
+  if (useMetric) {
+    const cm = parseFloat(heightCm);
+    if (!Number.isNaN(cm) && cm > 0) hCm = cm;
+  } else {
+    const ft = parseFloat(heightFt) || 0;
+    const inches = parseFloat(heightIn) || 0;
+    if (ft > 0 || inches > 0) hCm = (ft * 12 + inches) * 2.54;
+  }
   const wKg = useMetric ? w : w / 2.20462;
   const currentBmi = bmi(hCm, wKg);
 
@@ -111,12 +130,21 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
   async function handleSubmit(e) {
     e.preventDefault();
     setErr('');
-    const heightVal = height ? parseFloat(height) : null;
     const weightVal = weight ? parseFloat(weight) : null;
+    // Build height_cm based on active unit system
+    let height_cm = null;
+    if (useMetric) {
+      const cm = heightCm ? parseFloat(heightCm) : null;
+      if (cm && cm > 0) height_cm = cm;
+    } else {
+      const ft = heightFt ? parseFloat(heightFt) : 0;
+      const inches = heightIn ? parseFloat(heightIn) : 0;
+      if (ft > 0 || inches > 0) height_cm = (ft * 12 + inches) * 2.54;
+    }
     const body = {
       sex: sex || null,
       date_of_birth: dob || null,
-      height_cm: heightVal != null ? (useMetric ? heightVal : heightVal * 2.54) : null,
+      height_cm,
       weight_kg: weightVal != null ? (useMetric ? weightVal : weightVal / 2.20462) : null,
       use_metric: useMetric,
       activity_level: activity || null,
@@ -164,10 +192,34 @@ export default function ProfileForm({ initial, onSubmit, submitLabel = 'Save', b
             Date of birth
             <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
           </label>
-          <label>
-            Height ({useMetric ? 'cm' : 'in'})
-            <input type="number" step="0.1" value={height} onChange={(e) => setHeight(e.target.value)} />
-          </label>
+          {useMetric ? (
+            <label>
+              Height (cm)
+              <input type="number" step="0.1" min="0" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
+            </label>
+          ) : (
+            <label>
+              Height
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  type="number" inputMode="numeric" min="0" max="8"
+                  value={heightFt}
+                  onChange={(e) => setHeightFt(e.target.value)}
+                  style={{ flex: 1 }}
+                  aria-label="Height in feet"
+                />
+                <span className="muted small">ft</span>
+                <input
+                  type="number" inputMode="numeric" min="0" max="11" step="1"
+                  value={heightIn}
+                  onChange={(e) => setHeightIn(e.target.value)}
+                  style={{ flex: 1 }}
+                  aria-label="Height in inches"
+                />
+                <span className="muted small">in</span>
+              </div>
+            </label>
+          )}
           <label>
             Weight ({useMetric ? 'kg' : 'lb'})
             <input type="number" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} />

@@ -40,55 +40,61 @@ export default function BarcodeScanner({ onDetected, onClose }) {
   useEffect(() => {
     let cancelled = false;
     stoppedRef.current = false;
-
-    const scanner = new Html5Qrcode(REGION_ID, {
-      formatsToSupport: FORMATS,
-      verbose: false,
-    });
-    scannerRef.current = scanner;
+    let localScanner = null;
 
     const config = {
       fps: 10,
-      // qrbox adapts to the shorter dimension — works on phones in portrait and desktops.
       qrbox: (viewW, viewH) => {
         const edge = Math.min(viewW, viewH);
-        const w = Math.round(edge * 0.75);
-        const h = Math.round(edge * 0.45);
-        return { width: w, height: h };
+        return { width: Math.round(edge * 0.75), height: Math.round(edge * 0.45) };
       },
-      aspectRatio: undefined, // let the browser pick so we don't force a black-bar layout
+      aspectRatio: undefined,
       disableFlip: false,
-    };
-
-    const onScan = (decoded) => {
-      if (stoppedRef.current) return;
-      stoppedRef.current = true;
-      scanner.stop().catch(() => {}).finally(() => onDetected?.(decoded));
     };
 
     (async () => {
       try {
-        // Skip getCameras() — asking for facingMode: environment is faster and works
-        // on desktops too (they just get the default device).
-        await scanner.start({ facingMode: { ideal: 'environment' } }, config, onScan, () => { /* per-frame noise */ });
-        if (!cancelled) setStatus({ kind: 'scanning', text: 'Point at a barcode' });
+        const scanner = new Html5Qrcode(REGION_ID, { formatsToSupport: FORMATS, verbose: false });
+        localScanner = scanner;
+        scannerRef.current = scanner;
+
+        const onScan = (decoded) => {
+          if (stoppedRef.current) return;
+          stoppedRef.current = true;
+          scanner.stop().catch(() => {}).finally(() => onDetected?.(decoded));
+        };
+
+        // `ideal: environment` lets the browser pick the best available camera and
+        // fall back to any camera if no back-facing one exists. Single getUserMedia
+        // call avoids the "Cannot transition" race.
+        await scanner.start(
+          { facingMode: { ideal: 'environment' } },
+          config,
+          onScan,
+          () => { /* per-frame misses */ },
+        );
+
+        if (cancelled) {
+          await scanner.stop().catch(() => {});
+        } else {
+          setStatus({ kind: 'scanning', text: 'Point at a barcode' });
+        }
       } catch (err) {
-        // Fallback: try without the facingMode constraint (desktops, strict browsers)
-        try {
-          await scanner.start({ facingMode: 'user' }, config, onScan, () => {});
-          if (!cancelled) setStatus({ kind: 'scanning', text: 'Using front camera — point at a barcode' });
-        } catch (err2) {
-          const friendly = friendlyError(err2 || err);
-          if (!cancelled) setStatus({ kind: 'error', ...friendly });
+        if (!cancelled) {
+          setStatus({ kind: 'error', ...friendlyError(err) });
         }
       }
     })();
 
     return () => {
       cancelled = true;
-      const s = scannerRef.current;
-      if (s && s.isScanning) {
+      const s = localScanner;
+      if (!s) return;
+      // Scanner could be in STARTING, SCANNING, or STOPPED. Use isScanning, ignore errors.
+      if (s.isScanning) {
         s.stop().catch(() => {}).finally(() => { try { s.clear(); } catch { /* noop */ } });
+      } else {
+        try { s.clear(); } catch { /* noop */ }
       }
     };
   }, [onDetected, retryToken]);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -164,13 +165,16 @@ function ViewHistory({ dateParam, setParams, today, monthStart }) {
 }
 
 function EditHistory({ today, monthStart, initialDate }) {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [weekStart, setWeekStart] = useState(startOfWeek(initialDate));
   const [entries, setEntries] = useState([]);
+  const [weights, setWeights] = useState([]); // all weight entries in last 365d
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [confirmEntry, setConfirmEntry] = useState(null); // entry pending deletion
   const [undoItem, setUndoItem] = useState(null); // { entry, date } — most recent delete
+  const useMetric = user?.use_metric ?? false;
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => shiftDays(weekStart, i)),
@@ -192,6 +196,13 @@ function EditHistory({ today, monthStart, initialDate }) {
   }, []);
 
   useEffect(() => { load(selectedDate); }, [selectedDate, load]);
+
+  // Load weight entries once (server returns up to 365 days) and filter per day.
+  useEffect(() => {
+    api('/weight?days=365').then(setWeights).catch(() => {});
+  }, []);
+
+  const dayWeight = weights.find((w) => w.recorded_for === selectedDate);
 
   async function performDelete(entry) {
     setConfirmEntry(null);
@@ -289,6 +300,13 @@ function EditHistory({ today, monthStart, initialDate }) {
         <div className="card-header">
           <h2>{fmtDate(selectedDate)} <span className="muted">· {totalKcal} kcal total</span></h2>
         </div>
+        <DayWeight
+          date={selectedDate}
+          canEdit={selectedDate >= monthStart && selectedDate <= today}
+          existing={dayWeight}
+          useMetric={useMetric}
+          onChange={() => api('/weight?days=365').then(setWeights).catch(() => {})}
+        />
         {!canEdit && (
           <p className="notice">You can only add new entries for dates within the current month.</p>
         )}
@@ -360,5 +378,96 @@ function EditHistory({ today, monthStart, initialDate }) {
         </div>
       )}
     </>
+  );
+}
+
+function DayWeight({ date, canEdit, existing, useMetric, onChange }) {
+  const unit = useMetric ? 'kg' : 'lb';
+  const existingDisplay = existing
+    ? (useMetric ? existing.weight_kg : existing.weight_kg * 2.20462)
+    : null;
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(existingDisplay != null ? existingDisplay.toFixed(1) : '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    setVal(existingDisplay != null ? existingDisplay.toFixed(1) : '');
+    setEditing(false);
+    setErr('');
+  }, [date, existing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function save() {
+    const n = parseFloat(val);
+    if (Number.isNaN(n) || n <= 0) { setErr('Enter a valid weight.'); return; }
+    const kg = useMetric ? n : n / 2.20462;
+    setBusy(true); setErr('');
+    try {
+      await api('/weight', {
+        method: 'POST',
+        body: JSON.stringify({ weight_kg: kg, for_date: date, tz_offset: new Date().getTimezoneOffset() }),
+      });
+      setEditing(false);
+      onChange && onChange();
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function remove() {
+    if (!existing) return;
+    if (!window.confirm(`Remove weight entry for ${date}?`)) return;
+    setBusy(true); setErr('');
+    try {
+      await api(`/weight/${existing.id}`, { method: 'DELETE' });
+      onChange && onChange();
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
+  if (!canEdit && !existing) return null;
+
+  if (!editing) {
+    return (
+      <div className="day-weight-row">
+        <span className="muted small">⚖️ Weight:</span>
+        {existing ? (
+          <>
+            <strong>{existingDisplay.toFixed(1)} {unit}</strong>
+            {canEdit && (
+              <>
+                <button type="button" className="btn linkish" onClick={() => setEditing(true)}>Edit</button>
+                <button type="button" className="btn linkish danger" onClick={remove}>Remove</button>
+              </>
+            )}
+          </>
+        ) : (
+          canEdit && (
+            <button type="button" className="btn linkish" onClick={() => setEditing(true)}>
+              + Add weight for this day
+            </button>
+          )
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="day-weight-row">
+      <span className="muted small">⚖️ Weight:</span>
+      <input
+        type="number" step="0.1" min="0"
+        value={val} onChange={(e) => setVal(e.target.value)}
+        style={{ width: '6rem' }}
+        aria-label={`Weight in ${unit}`}
+      />
+      <span className="muted small">{unit}</span>
+      <button type="button" className="btn primary small" disabled={busy} onClick={save}>
+        {busy ? 'Saving…' : 'Save'}
+      </button>
+      <button type="button" className="btn ghost small" onClick={() => { setEditing(false); setErr(''); }}>
+        Cancel
+      </button>
+      {err && <span className="error-banner" style={{ margin: 0 }}>{err}</span>}
+    </div>
   );
 }

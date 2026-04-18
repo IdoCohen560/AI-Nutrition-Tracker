@@ -28,7 +28,7 @@ class User(Base):
     allergies = Column(Text, default="[]")              # JSON array
     dislikes = Column(Text, default="[]")               # JSON array
     notes = Column(Text, default="")                    # free-text preferences
-    use_metric = Column(Boolean, default=True, nullable=False)
+    use_metric = Column(Boolean, default=False, nullable=False)  # Imperial by default (US-based)
     favorite_foods = Column(Text, default="[]")          # JSON array of food names
     fast_start = Column(DateTime, nullable=True)         # active fast started at
     fast_target_hours = Column(Float, nullable=True)     # current fast target

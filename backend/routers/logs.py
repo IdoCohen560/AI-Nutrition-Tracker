@@ -116,6 +116,22 @@ async def parse_log(body: ParseLogRequest, user: User = Depends(get_current_user
         )
 
 
+from pydantic import BaseModel as _PydBaseModel
+
+
+class RescaleRequest(_PydBaseModel):
+    name: str
+    quantity: str | None = None
+
+
+@router.post("/rescale", response_model=FoodItemOut)
+async def rescale(body: RescaleRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Re-enrich a single food with a (possibly new) quantity. Used by the review table
+    so that changing '2 eggs' to '4 eggs' instantly rescales calories/macros/micros."""
+    item, _source = await enrich_item(body.name, body.quantity, db=db)
+    return item
+
+
 @router.get("/barcode/{gtin}", response_model=BarcodeLookupOut)
 async def barcode_lookup(gtin: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     item = await lookup_by_barcode(gtin, db=db)

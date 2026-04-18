@@ -160,6 +160,22 @@ export default function LogFood() {
     });
   }
 
+  async function rescaleItem(idx) {
+    const it = items[idx];
+    if (!it) return;
+    try {
+      const rescaled = await api('/logs/rescale', {
+        method: 'POST',
+        body: JSON.stringify({ name: it.name, quantity: it.quantity || null }),
+      });
+      setItems((prev) => {
+        const next = [...prev];
+        next[idx] = rescaled;
+        return next;
+      });
+    } catch (ex) { setErr(ex.message); }
+  }
+
   async function saveEntry() {
     setErr('');
     if (!items.length) {
@@ -297,10 +313,14 @@ export default function LogFood() {
               Parse confidence is below 80% — please confirm or edit items before saving.
             </p>
           )}
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Edit <em>Qty</em> (e.g. "3 eggs", "1 cup", "100g") and the nutrition auto-rescales.
+          </p>
           <table className="data-table">
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Qty</th>
                 <th>kcal</th>
                 <th>P</th>
                 <th>C</th>
@@ -315,6 +335,19 @@ export default function LogFood() {
                       className="table-input"
                       value={it.name}
                       onChange={(e) => updateItem(i, 'name', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="table-input"
+                      value={it.quantity || ''}
+                      placeholder="1 serving"
+                      onChange={(e) => updateItem(i, 'quantity', e.target.value)}
+                      onBlur={() => rescaleItem(i)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+                      }}
+                      title="Change quantity and press Enter or Tab to rescale"
                     />
                   </td>
                   <td>

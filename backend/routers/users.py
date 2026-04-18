@@ -50,7 +50,7 @@ def _to_out(user: User) -> UserOut:
         dislikes=_parse_list(user.dislikes),
         notes=user.notes or "",
         bmi=_compute_bmi(user.height_cm, user.weight_kg),
-        use_metric=bool(user.use_metric) if user.use_metric is not None else True,
+        use_metric=bool(user.use_metric) if user.use_metric is not None else False,
         water_goal_cups=int(user.water_goal_cups) if user.water_goal_cups else 8,
     )
 

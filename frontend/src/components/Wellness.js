@@ -10,7 +10,7 @@ const todayISO = () => {
 
 // --------------- Weight ---------------
 export function WeightCard({ user, onSaved }) {
-  const useMetric = user?.use_metric ?? true;
+  const useMetric = user?.use_metric ?? false;
   const [history, setHistory] = useState([]);
   const [val, setVal] = useState('');
   const [busy, setBusy] = useState(false);

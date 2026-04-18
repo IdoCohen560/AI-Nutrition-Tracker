@@ -508,3 +508,16 @@ ul.entry-list > li.entry-row p {
   from { opacity: 0; transform: translate(-50%, 12px); }
   to   { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ---------- history day-weight row ---------- */
+.day-weight-row {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  margin: 0 0 0.9rem;
+}
+.day-weight-row .btn.linkish { padding: 0.2rem 0.4rem; font-weight: 600; }
+.day-weight-row .btn.linkish.danger { color: var(--danger); }
+.day-weight-row .btn.linkish.danger:hover { color: #7a1919; }
+.day-weight-row input[type="number"] {
+  padding: 0.4rem 0.6rem; border: 1px solid var(--border);
+  border-radius: 6px; font: inherit;
+}

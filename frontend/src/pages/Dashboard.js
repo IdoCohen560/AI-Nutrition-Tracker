@@ -95,7 +95,7 @@ export default function Dashboard() {
         <AdaptiveTargetCard user={user} onApplied={refreshUser} />
       </div>
 
-      <WeightCard user={user} />
+      <WeightCard user={user} onSaved={refreshUser} />
 
       <div className="range-toggle">
         <button type="button" className={range === 'daily' ? 'active' : ''} onClick={() => setRange('daily')}>Daily</button>
@@ -168,16 +168,15 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {Array.isArray(data?.micros) && data.micros.some((m) => m.amount > 0) && (
+          {Array.isArray(data?.micros) && data.micros.length > 0 && (
             <div className="card">
               <div className="card-header">
                 <h2>Vitamins &amp; minerals</h2>
                 <span className="muted small">{range === 'weekly' ? '7-day total vs 7× DV' : 'vs daily value'}</span>
               </div>
-              <div className="micro-grid">
-                {data.micros
-                  .filter((m) => m.pct_dv != null)
-                  .map((m) => {
+              {data.micros.some((m) => m.amount > 0) ? (
+                <div className="micro-grid">
+                  {data.micros.filter((m) => m.pct_dv != null).map((m) => {
                     const pct = Math.max(0, Math.min(100, m.pct_dv));
                     return (
                       <div className="micro-row" key={m.label}>
@@ -189,7 +188,13 @@ export default function Dashboard() {
                       </div>
                     );
                   })}
-              </div>
+                </div>
+              ) : (
+                <p className="muted small" style={{ margin: 0 }}>
+                  No micronutrient data yet. Log foods — vitamin/mineral values come from the USDA database
+                  and show up here automatically.
+                </p>
+              )}
             </div>
           )}
 
@@ -212,7 +217,9 @@ export default function Dashboard() {
                             <div>
                               <span className="meal-icon">{foodEmoji(it.name, mt)}</span>
                               <strong>{it.name}</strong>
-                              <span className="muted small"> · {it.serving || `${it.quantity || 1} serving`}</span>
+                              {(it.quantity || it.serving) && (
+                                <span className="muted small"> · {it.quantity || it.serving}</span>
+                              )}
                             </div>
                             <span>{fmtNum(it.calories)} kcal</span>
                           </li>

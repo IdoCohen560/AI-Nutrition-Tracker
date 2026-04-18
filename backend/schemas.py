@@ -38,7 +38,7 @@ class UserOut(BaseModel):
     dislikes: list[str] = []
     notes: str = ""
     bmi: float | None = None
-    use_metric: bool = True
+    use_metric: bool = False  # Imperial by default (US-based)
     water_goal_cups: int = 8
 
     model_config = {"from_attributes": True}

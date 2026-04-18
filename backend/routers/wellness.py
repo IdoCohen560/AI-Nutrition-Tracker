@@ -54,13 +54,40 @@ def add_weight(body: WeightCreate, user: User = Depends(get_current_user), db: S
     else:
         entry = WeightEntry(user_id=user.id, weight_kg=body.weight_kg, recorded_for=target)
         db.add(entry)
-    user.weight_kg = body.weight_kg  # mirror current weight onto profile
+    # Mirror onto profile only if this IS the user's most recent weight entry.
+    # Editing an older day shouldn't overwrite today's profile weight.
+    latest = (
+        db.query(WeightEntry)
+        .filter(WeightEntry.user_id == user.id)
+        .order_by(WeightEntry.recorded_for.desc())
+        .first()
+    )
+    if latest is None or target >= latest.recorded_for:
+        user.weight_kg = body.weight_kg
     db.commit()
     db.refresh(entry)
     return WeightOut(
         id=entry.id, weight_kg=entry.weight_kg, recorded_for=entry.recorded_for,
         created_at=entry.created_at.isoformat(),
     )
+
+
+@router.delete("/weight/{entry_id}", status_code=204)
+def delete_weight(entry_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    entry = db.get(WeightEntry, entry_id)
+    if not entry or entry.user_id != user.id:
+        raise HTTPException(404, "Weight entry not found")
+    db.delete(entry)
+    # If we just deleted the most recent entry, roll the profile weight back to whatever's left.
+    latest = (
+        db.query(WeightEntry)
+        .filter(WeightEntry.user_id == user.id)
+        .order_by(WeightEntry.recorded_for.desc())
+        .first()
+    )
+    user.weight_kg = latest.weight_kg if latest else None
+    db.commit()
+    return None
 
 
 @router.get("/weight", response_model=list[WeightOut])

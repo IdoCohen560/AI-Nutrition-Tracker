@@ -515,3 +515,17 @@
 
 /* Recharts containers: ensure parent has min-width:0 so they don't overflow */
 .donut-wrap, .nb-pie-wrap, .ring-wrap { min-width: 0; }
+
+/* Edit History fixes */
+.week-nav { display: flex; flex-wrap: nowrap; align-items: center; gap: 0.5rem; }
+.week-nav-btn { flex: 0 0 auto; min-width: 36px; padding: 0.4rem 0.65rem; font-size: 1rem; line-height: 1; }
+.week-nav-label { flex: 1 1 auto; text-align: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; }
+
+.edit-day-actions { display: flex; justify-content: center; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border); }
+.edit-day-actions .btn { min-width: 200px; }
+
+/* Re-affirm: entry row uses a 2-col layout so delete button never falls below */
+.entry-row { display: grid !important; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: start; }
+.entry-row > div { min-width: 0; }
+.entry-row > button { align-self: start; }
+.entry-row p { margin: 0.25rem 0 0; overflow-wrap: anywhere; word-break: break-word; }

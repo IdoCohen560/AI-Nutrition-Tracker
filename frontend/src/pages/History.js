@@ -211,15 +211,23 @@ function EditHistory({ today, monthStart, initialDate }) {
 
       <div className="card">
         <div className="week-nav">
-          <button type="button" className="btn ghost small" onClick={() => setWeekStart(shiftDays(weekStart, -7))}>‹ Prev week</button>
-          <strong>{fmtShort(weekStart)} – {fmtShort(weekEnd)}</strong>
           <button
             type="button"
-            className="btn ghost small"
+            className="btn ghost small week-nav-btn"
+            aria-label="Previous week"
+            onClick={() => setWeekStart(shiftDays(weekStart, -7))}
+          >
+            ‹
+          </button>
+          <strong className="week-nav-label">{fmtShort(weekStart)} – {fmtShort(weekEnd)}</strong>
+          <button
+            type="button"
+            className="btn ghost small week-nav-btn"
+            aria-label="Next week"
             disabled={!canGoNextWeek}
             onClick={() => setWeekStart(shiftDays(weekStart, 7))}
           >
-            Next week ›
+            ›
           </button>
         </div>
 
@@ -243,14 +251,9 @@ function EditHistory({ today, monthStart, initialDate }) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card edit-day-card">
         <div className="card-header">
           <h2>{fmtDate(selectedDate)} <span className="muted">· {totalKcal} kcal total</span></h2>
-          {canEdit && (
-            <Link to={`/log?date=${selectedDate}`} className="btn primary small">
-              Add food
-            </Link>
-          )}
         </div>
         {!canEdit && (
           <p className="notice">You can only add new entries for dates within the current month.</p>
@@ -274,6 +277,13 @@ function EditHistory({ today, monthStart, initialDate }) {
             </li>
           ))}
         </ul>
+        {canEdit && (
+          <div className="edit-day-actions">
+            <Link to={`/log?date=${selectedDate}`} className="btn primary">
+              + Add food
+            </Link>
+          </div>
+        )}
       </div>
     </>
   );

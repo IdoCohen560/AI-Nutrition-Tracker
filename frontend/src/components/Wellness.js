@@ -211,6 +211,12 @@ export function FastingCard() {
   const elapsedHrs = elapsedSec / 3600;
 
   // Chime once when the goal is first crossed in this session.
+  // Two paths, both gated by goalFiredRef so it never repeats:
+  //   1. The 1-second tick detects the crossing while the tab is in the foreground.
+  //   2. A one-shot setTimeout fires at the exact goal moment — more reliable than
+  //      the tick in background tabs (where setInterval gets heavily throttled).
+  // If the fast already completed before mount (e.g., user re-logs in), path #1
+  // fires immediately on first render.
   useEffect(() => {
     if (!status.active) return;
     const tgtH = status.target_hours || target;
@@ -220,6 +226,21 @@ export function FastingCard() {
       playGoalBeep();
     }
   }, [elapsedHrs, status.active, status.target_hours, target]);
+
+  useEffect(() => {
+    if (!status.active || !status.started_at) return;
+    const tgtH = status.target_hours || target;
+    if (!tgtH) return;
+    const msRemaining = new Date(status.started_at).getTime() + tgtH * 3600 * 1000 - Date.now();
+    if (msRemaining <= 0) return; // already past; path #1 handles it
+    const id = setTimeout(() => {
+      if (!goalFiredRef.current) {
+        goalFiredRef.current = true;
+        playGoalBeep();
+      }
+    }, msRemaining);
+    return () => clearTimeout(id);
+  }, [status.active, status.started_at, status.target_hours, target]);
 
   async function start() {
     if (!authed) {

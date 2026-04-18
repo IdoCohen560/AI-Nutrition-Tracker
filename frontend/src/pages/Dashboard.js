@@ -14,16 +14,22 @@ function fmtNum(n) {
 }
 
 function fmtDate(iso) {
-  const d = new Date(iso + 'T12:00:00Z');
-  return d.toLocaleDateString(undefined, {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-    timeZone: 'UTC',
   });
 }
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+function todayISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export default function Dashboard() {
   const [date] = useState(todayISO());

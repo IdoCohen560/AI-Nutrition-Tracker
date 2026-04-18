@@ -588,7 +588,7 @@ ul.entry-list > li.entry-row {
 .admin-table td { vertical-align: middle; padding: 0.7rem 0.5rem; }
 .admin-table th:first-child, .admin-table td:first-child { padding-left: 0; }
 .admin-table th:last-child, .admin-table td:last-child {
-  padding-right: 0;
+  padding: 0.7rem 0.5rem;
   text-align: right;
   white-space: nowrap;
   width: 1%;

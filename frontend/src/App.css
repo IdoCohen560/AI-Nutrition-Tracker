@@ -524,8 +524,34 @@
 .edit-day-actions { display: flex; justify-content: center; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border); }
 .edit-day-actions .btn { min-width: 200px; }
 
-/* Re-affirm: entry row uses a 2-col layout so delete button never falls below */
-.entry-row { display: grid !important; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: start; }
-.entry-row > div { min-width: 0; }
-.entry-row > button { align-self: start; }
-.entry-row p { margin: 0.25rem 0 0; overflow-wrap: anywhere; word-break: break-word; }
+/* Bulletproof entry row */
+.entry-list .entry-row,
+ul.entry-list > li.entry-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 0.75rem !important;
+  position: relative;
+}
+.entry-list .entry-row > div {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 80px) !important;
+  overflow: hidden !important;
+}
+.entry-list .entry-row > button,
+.entry-list .entry-row > a {
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 1;
+}
+.entry-list .entry-row p {
+  margin: 0.25rem 0 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  max-width: 100% !important;
+}

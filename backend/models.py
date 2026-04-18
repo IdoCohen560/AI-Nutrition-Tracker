@@ -15,6 +15,8 @@ class User(Base):
     daily_calorie_goal = Column(Integer, nullable=True)
     onboarding_completed = Column(Boolean, default=False)
     token_version = Column(Integer, default=0)
+    role = Column(String(32), default="user", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     entries = relationship("FoodLogEntry", back_populates="user", cascade="all, delete-orphan")
 

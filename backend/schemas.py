@@ -26,6 +26,7 @@ class UserOut(BaseModel):
     email: str
     daily_calorie_goal: int | None
     onboarding_completed: bool
+    role: str = "user"
 
     model_config = {"from_attributes": True}
 

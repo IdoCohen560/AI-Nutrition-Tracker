@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 import models  # noqa: F401
 from database import Base, engine
-from routers import auth, dashboard, logs, recommendations, users
+from routers import admin, auth, dashboard, logs, recommendations, users
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,7 +23,9 @@ app.add_middleware(
 @app.on_event("startup")
 def _startup():
     from scripts.migrate_v2 import run as migrate_v2
+    from scripts.migrate_v3 import run as migrate_v3
     migrate_v2()
+    migrate_v3()
     Base.metadata.create_all(bind=engine)
 
 
@@ -37,3 +39,4 @@ app.include_router(users.router)
 app.include_router(logs.router)
 app.include_router(dashboard.router)
 app.include_router(recommendations.router)
+app.include_router(admin.router)

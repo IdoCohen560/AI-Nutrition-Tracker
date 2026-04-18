@@ -2,7 +2,8 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function AppLayout() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const isAdmin = user && (user.role === 'admin' || user.role === 'super_admin');
   const nav = useNavigate();
 
   async function handleLogout() {
@@ -24,6 +25,7 @@ export default function AppLayout() {
           <NavLink to="/log">Log food</NavLink>
           <NavLink to="/history">History</NavLink>
           <NavLink to="/settings">Settings</NavLink>
+          {isAdmin && <NavLink to="/admin">Admin</NavLink>}
           <button type="button" className="btn linkish" onClick={handleLogout}>
             Log out
           </button>

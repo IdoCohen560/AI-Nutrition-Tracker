@@ -46,3 +46,9 @@ def get_current_user(
             detail="Token has been invalidated",
         )
     return user
+
+
+def get_admin_user(user: Annotated[User, Depends(get_current_user)]) -> User:
+    if user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return user

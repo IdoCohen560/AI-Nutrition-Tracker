@@ -15,10 +15,13 @@ def register(body: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == body.email.lower()).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    email = body.email.lower()
+    role = "super_admin" if email == "ido.the.cohen@gmail.com" else "user"
     user = User(
-        email=body.email.lower(),
+        email=email,
         hashed_password=hash_password(body.password),
         onboarding_completed=False,
+        role=role,
     )
     db.add(user)
     db.commit()

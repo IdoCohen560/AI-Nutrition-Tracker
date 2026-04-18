@@ -422,3 +422,9 @@
 .week-day.future { opacity: 0.35; cursor: not-allowed; }
 .week-day-name { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
 .week-day-num { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+
+/* Admin */
+.role-tag { padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+.role-user { background: #e8e4dc; color: var(--muted); }
+.role-admin { background: var(--accent); color: #fff; }
+.role-super_admin { background: var(--accent-2); color: #fff; }

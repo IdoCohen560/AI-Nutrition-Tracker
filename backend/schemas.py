@@ -78,6 +78,8 @@ class CreateLogRequest(BaseModel):
     items: list[FoodItemOut]
     parse_confidence: float | None = None
     confirmed: bool = False
+    for_date: str | None = None  # YYYY-MM-DD in user's local tz
+    tz_offset: int = 0  # JS getTimezoneOffset() minutes
 
 
 class FoodLogEntryOut(BaseModel):

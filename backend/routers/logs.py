@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
@@ -126,6 +126,7 @@ def create_log(
     if not body.items:
         raise HTTPException(status_code=400, detail="At least one food item is required")
     totals = _totals_from_items(body.items)
+    created_at = _resolve_created_at(body.for_date, body.tz_offset, user)
     entry = FoodLogEntry(
         user_id=user.id,
         meal_type=body.meal_type,
@@ -142,11 +143,36 @@ def create_log(
         total_fiber_g=totals["fib"],
         total_sugars_g=totals["sug"],
         total_added_sugars_g=totals["asug"],
+        created_at=created_at,
     )
     db.add(entry)
     db.commit()
     db.refresh(entry)
     return _entry_to_out(entry)
+
+
+def _resolve_created_at(for_date: str | None, tz_offset: int, user: User) -> datetime:
+    """Build a UTC-naive created_at. If for_date is a past local day in user's tz,
+    pin it to that day's noon UTC-shifted time. Reject future dates and dates earlier
+    than the first of the local current month."""
+    if not for_date:
+        return datetime.utcnow()
+    try:
+        target = date.fromisoformat(for_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid for_date format (YYYY-MM-DD)")
+    now_local = datetime.utcnow() - timedelta(minutes=tz_offset)
+    today_local = now_local.date()
+    if target > today_local:
+        raise HTTPException(status_code=400, detail="Cannot log for a future date")
+    first_of_month = today_local.replace(day=1)
+    if target < first_of_month:
+        raise HTTPException(status_code=400, detail="Can only edit dates in the current month")
+    if target == today_local:
+        return datetime.utcnow()
+    # Past day: pin to local noon, then convert to naive UTC.
+    local_noon = datetime(target.year, target.month, target.day, 12, 0, 0)
+    return local_noon + timedelta(minutes=tz_offset)
 
 
 def _totals_from_items(items: list[FoodItemOut]) -> dict:

@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
+
+function firstOfMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function toISO(d) {
   return d.toISOString().slice(0, 10);
@@ -75,9 +85,16 @@ export default function History() {
         .reverse()
         .map((date) => (
           <div key={date} className="card history-day">
-            <h2>
-              {date} <span className="muted">· {byDate[date].total} kcal total</span>
-            </h2>
+            <div className="card-header">
+              <h2>
+                {date} <span className="muted">· {byDate[date].total} kcal total</span>
+              </h2>
+              {date >= firstOfMonth() && date <= localToday() && (
+                <Link to={`/log?date=${date}`} className="btn primary small">
+                  Add food
+                </Link>
+              )}
+            </div>
             <ul className="entry-list">
               {byDate[date].items.map((e) => (
                 <li key={e.id} className="entry-row">

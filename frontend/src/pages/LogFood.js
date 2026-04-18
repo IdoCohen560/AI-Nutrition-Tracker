@@ -1,6 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
+
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function firstOfMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
 
 const MEALS = [
   { value: 'breakfast', label: 'Breakfast' },
@@ -11,7 +21,19 @@ const MEALS = [
 
 export default function LogFood() {
   const nav = useNavigate();
-  const [mealType, setMealType] = useState('lunch');
+  const [params] = useSearchParams();
+  const today = useMemo(localToday, []);
+  const minDate = useMemo(firstOfMonth, []);
+  const initialDate = (() => {
+    const q = params.get('date');
+    if (q && q >= minDate && q <= today) return q;
+    return today;
+  })();
+  const initialMeal = ['breakfast', 'lunch', 'dinner', 'snack'].includes(params.get('meal'))
+    ? params.get('meal')
+    : 'lunch';
+  const [forDate, setForDate] = useState(initialDate);
+  const [mealType, setMealType] = useState(initialMeal);
   const [text, setText] = useState('');
   const [items, setItems] = useState([]);
   const [parseConfidence, setParseConfidence] = useState(null);
@@ -73,9 +95,11 @@ export default function LogFood() {
           items,
           parse_confidence: parseConfidence,
           confirmed: true,
+          for_date: forDate,
+          tz_offset: new Date().getTimezoneOffset(),
         }),
       });
-      nav('/dashboard');
+      nav(forDate === today ? '/dashboard' : `/history?date=${forDate}`);
     } catch (ex) {
       setErr(ex.message);
     } finally {
@@ -89,6 +113,17 @@ export default function LogFood() {
       <p className="muted">Describe what you ate in plain English. We&apos;ll parse it and look up nutrition.</p>
 
       <div className="card">
+        <label>
+          Date
+          <input
+            type="date"
+            value={forDate}
+            min={minDate}
+            max={today}
+            onChange={(e) => setForDate(e.target.value)}
+          />
+          <span className="muted small">You can edit any day this month, up to today.</span>
+        </label>
         <label>
           Meal type
           <select value={mealType} onChange={(e) => setMealType(e.target.value)}>

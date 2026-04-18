@@ -367,11 +367,8 @@
 
 
 /* Dashboard additions */
-.date-scrubber { position: relative; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem; }
-.date-trigger { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 0.4rem 1rem; font: inherit; font-weight: 600; cursor: pointer; }
-.date-trigger:hover { background: var(--surface-2); border-color: var(--accent); }
-.date-cal { font-size: 1rem; }
-.date-input-hidden { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; left: 50%; top: 100%; }
+.date-scrubber { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 1rem; }
+.date-label { font-weight: 600; color: var(--accent); min-width: 140px; text-align: center; }
 
 .range-toggle { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px; max-width: 320px; margin: 0 auto 1.25rem; }
 .range-toggle button { flex: 1; background: transparent; border: 0; color: var(--muted); padding: 0.45rem 1rem; border-radius: 999px; font-weight: 600; cursor: pointer; }

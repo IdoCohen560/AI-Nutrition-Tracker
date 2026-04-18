@@ -11,7 +11,6 @@ from datetimeutil import utc_day_range, utc_today
 from deps import get_current_user
 from models import FoodLogEntry, User
 from schemas import (
-    BarcodeLookupOut,
     CreateLogRequest,
     FoodItemOut,
     FoodLogEntryOut,
@@ -23,7 +22,7 @@ from schemas import (
     RecipeImportResponse,
 )
 from services.nlp import parse_meal_description
-from services.nutrition import enrich_item, lookup_by_barcode
+from services.nutrition import enrich_item
 from services.recipe_import import import_recipe_from_url
 
 router = APIRouter(prefix="/logs", tags=["logs"])
@@ -130,14 +129,6 @@ async def rescale(body: RescaleRequest, user: User = Depends(get_current_user), 
     so that changing '2 eggs' to '4 eggs' instantly rescales calories/macros/micros."""
     item, _source = await enrich_item(body.name, body.quantity, db=db)
     return item
-
-
-@router.get("/barcode/{gtin}", response_model=BarcodeLookupOut)
-async def barcode_lookup(gtin: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    item = await lookup_by_barcode(gtin, db=db)
-    if not item:
-        return BarcodeLookupOut(found=False)
-    return BarcodeLookupOut(found=True, item=item)
 
 
 @router.post("/import-recipe", response_model=RecipeImportResponse)

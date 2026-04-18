@@ -239,11 +239,6 @@ class BreakdownOut(BaseModel):
     meals: dict[str, MealBreakdown]
 
 
-class BarcodeLookupOut(BaseModel):
-    found: bool
-    item: FoodItemOut | None = None
-
-
 class RecipeImportRequest(BaseModel):
     url: str = Field(min_length=6, max_length=2000)
 

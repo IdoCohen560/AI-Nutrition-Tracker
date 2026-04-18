@@ -61,4 +61,10 @@ def set_role(
     target.token_version = (target.token_version or 0) + 1
     db.commit()
     db.refresh(target)
-    return target
+    return AdminUserOut(
+        id=target.id,
+        email=target.email or "",
+        role=target.role or "user",
+        onboarding_completed=bool(target.onboarding_completed),
+        created_at=target.created_at.isoformat() if target.created_at else None,
+    )

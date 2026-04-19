@@ -217,9 +217,13 @@ export default function Dashboard() {
                             <div>
                               <span className="meal-icon">{foodEmoji(it.name, mt)}</span>
                               <strong>{it.name}</strong>
-                              {(it.quantity || it.serving) && (
-                                <span className="muted small"> · {it.quantity || it.serving}</span>
-                              )}
+                              {(() => {
+                                const q = it.quantity || it.serving;
+                                if (!q) return null;
+                                // Bare number (e.g. "3") → render as "× 3"
+                                const label = /^\s*\d+(?:\.\d+)?\s*$/.test(String(q)) ? `× ${String(q).trim()}` : q;
+                                return <span className="muted small"> · {label}</span>;
+                              })()}
                             </div>
                             <span>{fmtNum(it.calories)} kcal</span>
                           </li>

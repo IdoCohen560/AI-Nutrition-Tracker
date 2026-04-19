@@ -12,6 +12,21 @@ function firstOfMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
+// Parse a leading numeric quantity out of whatever the parser returned.
+// "3 eggs" -> 3, "1 cup rice" -> 1, "1/2 banana" -> 0.5, null/garbage -> 1.
+function qtyCount(q) {
+  if (q == null) return 1;
+  const s = String(q).trim();
+  if (!s) return 1;
+  const frac = s.match(/^(\d+)\s*\/\s*(\d+)/);
+  if (frac) { const b = Number(frac[2]); return b ? Number(frac[1]) / b : 1; }
+  const num = s.match(/^(\d+(?:\.\d+)?)/);
+  if (num) return Number(num[1]);
+  if (/^(a|an|one)\b/i.test(s)) return 1;
+  if (/^half\b/i.test(s)) return 0.5;
+  return 1;
+}
+
 const MEALS = [
   { value: 'breakfast', label: 'Breakfast' },
   { value: 'lunch', label: 'Lunch' },
@@ -291,7 +306,7 @@ export default function LogFood() {
             </p>
           )}
           <p className="muted small" style={{ marginTop: 0 }}>
-            Edit <em>Qty</em> (e.g. "3 eggs", "1 cup", "100g") and the nutrition auto-rescales.
+            <em>Qty</em> is the number of servings of this food. Change it and nutrition auto-rescales.
           </p>
           <table className="data-table">
             <thead>
@@ -316,15 +331,17 @@ export default function LogFood() {
                   </td>
                   <td>
                     <input
-                      className="table-input"
-                      value={it.quantity || ''}
-                      placeholder="1 serving"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      className="table-input narrow"
+                      value={qtyCount(it.quantity)}
                       onChange={(e) => updateItem(i, 'quantity', e.target.value)}
                       onBlur={() => rescaleItem(i)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
                       }}
-                      title="Change quantity and press Enter or Tab to rescale"
+                      title="Number of servings — Tab or Enter to rescale"
                     />
                   </td>
                   <td>

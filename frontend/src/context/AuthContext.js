@@ -71,6 +71,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
       refreshUser,
+      setUser,
       isAuthenticated: !!user,
     }),
     [user, loading, refreshUser]

@@ -5,18 +5,23 @@ import { useAuth } from '../context/AuthContext';
 import ProfileForm from '../components/ProfileForm';
 
 export default function Settings() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState('');
+  const [err, setErr] = useState('');
 
   async function handleSubmit(body) {
-    setOk('');
+    setOk(''); setErr('');
     setBusy(true);
     try {
-      await api('/users/me', { method: 'PATCH', body: JSON.stringify(body) });
-      await refreshUser();
+      // Use the PATCH response directly. Prevents a race where a second GET /users/me
+      // could overwrite the freshly-saved state with a stale value.
+      const updated = await api('/users/me', { method: 'PATCH', body: JSON.stringify(body) });
+      setUser(updated);
       setOk('Saved.');
+    } catch (ex) {
+      setErr(ex.message || 'Save failed');
     } finally {
       setBusy(false);
     }
@@ -28,6 +33,7 @@ export default function Settings() {
       <p className="muted">Signed in as {user?.email}</p>
 
       {ok && <div className="success-banner">{ok}</div>}
+      {err && <div className="error-banner">{err}</div>}
 
       <ProfileForm initial={user} onSubmit={handleSubmit} submitLabel="Save profile" busy={busy}>
         <button

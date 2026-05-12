@@ -194,7 +194,7 @@ export default function LogFood() {
           tz_offset: new Date().getTimezoneOffset(),
         }),
       });
-      nav(forDate === today ? '/dashboard' : `/history?date=${forDate}`);
+      nav(forDate === today ? '/dashboard' : `/history?tab=edit&date=${forDate}`);
     } catch (ex) {
       setErr(ex.message);
     } finally {

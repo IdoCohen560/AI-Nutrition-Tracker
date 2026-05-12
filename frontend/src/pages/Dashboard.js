@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 import Calendar from '../components/Calendar';
+import UnitToggle from '../components/UnitToggle';
 import { AdaptiveTargetCard, FastingCard, StatsCard, StepsCard, WaterCard, WeightCard } from '../components/Wellness';
 import { useAuth } from '../context/AuthContext';
 import { foodEmoji } from '../utils/foodEmoji';
@@ -91,19 +92,22 @@ export default function Dashboard() {
 
   return (
     <div className="page dashboard">
-      <h1 className="date-header">
-        {fmtDate(date)}
-        {!isToday && (
-          <button
-            type="button"
-            className="btn ghost small"
-            style={{ marginLeft: '0.75rem' }}
-            onClick={() => setParams({}, { replace: true })}
-          >
-            Back to today
-          </button>
-        )}
-      </h1>
+      <div className="date-header-row">
+        <h1 className="date-header">
+          {fmtDate(date)}
+          {!isToday && (
+            <button
+              type="button"
+              className="btn ghost small"
+              style={{ marginLeft: '0.75rem' }}
+              onClick={() => setParams({}, { replace: true })}
+            >
+              Back to today
+            </button>
+          )}
+        </h1>
+        <UnitToggle />
+      </div>
 
       <Calendar />
 
@@ -200,7 +204,7 @@ export default function Dashboard() {
                   <div key={mt} className="card meal-card">
                     <div className="card-header">
                       <h2>{MEAL_LABEL[mt]}: {fmtNum(meal.calories)} cals</h2>
-                      <Link to={`/log?meal=${mt === 'snacks' ? 'snack' : mt}`} className="btn primary small">
+                      <Link to={`/log?meal=${mt === 'snacks' ? 'snack' : mt}${isToday ? '' : `&date=${date}`}`} className="btn primary small">
                         Add Food
                       </Link>
                     </div>

@@ -248,6 +248,17 @@ ul.entry-list > li.entry-row p {
 .history-day h2 { margin-top: 0; }
 .history-tabs { max-width: 100%; width: 100%; }
 
+.date-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.5rem;
+}
+.date-header-row .date-header { margin: 0; }
+.unit-toggle { flex-shrink: 0; }
+
 .meal-group { margin-top: 0.75rem; }
 .meal-group:first-of-type { margin-top: 0.25rem; }
 .meal-heading {

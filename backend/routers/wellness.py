@@ -286,51 +286,78 @@ def stats(tz_offset: int = Query(0, alias="tz"), user: User = Depends(get_curren
     return StatsOut(streak_days=streak, diet_score=score, diet_score_breakdown=breakdown, recent_foods=seen)
 
 
+def _score_one_day_totals(pro: float, fib: float, sod: float, sat: float, sug: float, pro_target: float) -> int:
+    pro_score = min(25.0, (pro / pro_target) * 25.0) if pro_target else 0
+    fib_score = min(25.0, (fib / 28.0) * 25.0)
+    sod_score = max(0.0, 25.0 - max(0.0, sod - 2300.0) / 2300.0 * 25.0)
+    sat_score = max(0.0, 25.0 - max(0.0, sat - 20.0) / 20.0 * 25.0)
+    raw = pro_score + fib_score + (sod_score * 0.5) + (sat_score * 0.5)
+    sugar_penalty = min(15.0, max(0.0, sug - 50.0) / 50.0 * 15.0)
+    return int(max(0, min(100, round(raw - sugar_penalty))))
+
+
 def _diet_score_today(db: Session, user: User, tz_offset: int) -> tuple[int | None, dict]:
-    target = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
-    start_local = datetime.combine(target, datetime.min.time()) + timedelta(minutes=tz_offset)
-    end_local = start_local + timedelta(days=1)
+    """30-day rolling diet score, averaged over days the user actually logged food.
+
+    Edits to past days count — entries are bucketed by their stored created_at,
+    which already reflects the local day the user logged for.
+    """
+    today_local = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+    window_start = today_local - timedelta(days=29)  # 30 days inclusive
+    start_dt = datetime.combine(window_start, datetime.min.time()) + timedelta(minutes=tz_offset)
+    end_dt = datetime.combine(today_local + timedelta(days=1), datetime.min.time()) + timedelta(minutes=tz_offset)
     rows = (
         db.query(FoodLogEntry)
         .filter(
             FoodLogEntry.user_id == user.id,
-            FoodLogEntry.created_at >= start_local,
-            FoodLogEntry.created_at < end_local,
+            FoodLogEntry.created_at >= start_dt,
+            FoodLogEntry.created_at < end_dt,
         )
         .all()
     )
     if not rows:
         return None, {}
-    cal = sum(r.total_calories or 0 for r in rows)
-    pro = sum(r.total_protein_g or 0 for r in rows)
-    fib = sum(r.total_fiber_g or 0 for r in rows)
-    sod = sum(r.total_sodium_mg or 0 for r in rows)
-    sat = sum(r.total_saturated_fat_g or 0 for r in rows)
-    sug = sum(r.total_added_sugars_g or 0 for r in rows)
 
-    # Targets vs actual. Each component is 0–25.
+    # Bucket entries by local day.
+    by_day: dict[str, list[FoodLogEntry]] = {}
+    for r in rows:
+        local_day = (r.created_at - timedelta(minutes=tz_offset)).date().isoformat()
+        by_day.setdefault(local_day, []).append(r)
+
     body_kg = user.weight_kg or 70.0
-    pro_target = max(50.0, body_kg * 0.8)         # ≥0.8 g/kg
-    fib_target = 28.0                              # daily reference
-    sod_cap = 2300.0
-    sat_cap = 20.0
-    sug_cap = 50.0
+    pro_target = max(50.0, body_kg * 0.8)
 
-    pro_score = min(25.0, (pro / pro_target) * 25.0) if pro_target else 0
-    fib_score = min(25.0, (fib / fib_target) * 25.0)
-    sod_score = max(0.0, 25.0 - max(0.0, sod - sod_cap) / sod_cap * 25.0)
-    sat_score = max(0.0, 25.0 - max(0.0, sat - sat_cap) / sat_cap * 25.0)
-    # Weight the four; sugars cap it.
-    raw = pro_score + fib_score + (sod_score * 0.5) + (sat_score * 0.5)
-    sugar_penalty = min(15.0, max(0.0, sug - sug_cap) / max(sug_cap, 1.0) * 15.0)
-    score = max(0, min(100, round(raw - sugar_penalty)))
-    return int(score), {
-        "calories": cal,
-        "protein_g": round(pro, 1),
-        "fiber_g": round(fib, 1),
-        "sodium_mg": round(sod, 1),
-        "saturated_fat_g": round(sat, 1),
-        "added_sugars_g": round(sug, 1),
+    day_scores: list[int] = []
+    totals = {"calories": 0, "protein_g": 0.0, "fiber_g": 0.0, "sodium_mg": 0.0, "saturated_fat_g": 0.0, "added_sugars_g": 0.0}
+    for day_rows in by_day.values():
+        cal = sum(r.total_calories or 0 for r in day_rows)
+        pro = sum(r.total_protein_g or 0 for r in day_rows)
+        fib = sum(r.total_fiber_g or 0 for r in day_rows)
+        sod = sum(r.total_sodium_mg or 0 for r in day_rows)
+        sat = sum(r.total_saturated_fat_g or 0 for r in day_rows)
+        sug = sum(r.total_added_sugars_g or 0 for r in day_rows)
+        day_scores.append(_score_one_day_totals(pro, fib, sod, sat, sug, pro_target))
+        totals["calories"] += cal
+        totals["protein_g"] += pro
+        totals["fiber_g"] += fib
+        totals["sodium_mg"] += sod
+        totals["saturated_fat_g"] += sat
+        totals["added_sugars_g"] += sug
+
+    if not day_scores:
+        return None, {}
+
+    avg_score = int(round(sum(day_scores) / len(day_scores)))
+    n = len(day_scores)
+    return avg_score, {
+        "days_logged": n,
+        "window_days": 30,
+        "avg_calories": round(totals["calories"] / n, 1),
+        "avg_protein_g": round(totals["protein_g"] / n, 1),
+        "avg_fiber_g": round(totals["fiber_g"] / n, 1),
+        "avg_sodium_mg": round(totals["sodium_mg"] / n, 1),
+        "avg_saturated_fat_g": round(totals["saturated_fat_g"] / n, 1),
+        "avg_added_sugars_g": round(totals["added_sugars_g"] / n, 1),
         "protein_target_g": round(pro_target, 1),
     }
 

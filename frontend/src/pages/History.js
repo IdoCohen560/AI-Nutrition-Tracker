@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
+import UnitToggle from '../components/UnitToggle';
 import { useAuth } from '../context/AuthContext';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -282,7 +283,10 @@ function EditHistory({ today, monthStart, initialDate }) {
 
   return (
     <>
-      <p className="muted">Edit one day at a time. Use the arrows to switch weeks.</p>
+      <div className="date-header-row">
+        <p className="muted" style={{ margin: 0 }}>Edit one day at a time. Use the arrows to switch weeks.</p>
+        <UnitToggle />
+      </div>
 
       <div className="card">
         <div className="week-nav">

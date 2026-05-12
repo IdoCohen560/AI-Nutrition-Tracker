@@ -332,7 +332,12 @@ export function StatsCard({ refreshKey }) {
         <div>
           <p className="muted small" style={{ margin: 0 }}>Diet score</p>
           <p className="stat-big" style={{ margin: 0, color: scoreColor }}>{score ?? '—'}</p>
-          <p className="muted small">{label}</p>
+          <p className="muted small">
+            {label}
+            {stats.diet_score_breakdown?.days_logged != null && (
+              <> · {stats.diet_score_breakdown.days_logged}/30 days logged</>
+            )}
+          </p>
         </div>
       </div>
     </div>

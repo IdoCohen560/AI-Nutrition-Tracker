@@ -384,12 +384,19 @@ export function AdaptiveTargetCard({ user, onApplied }) {
         </p>
       )}
       <p className="reason">{data.reason}</p>
-      {data.weight_trend_kg_per_week != null && (
-        <p className="muted small" style={{ marginTop: '0.25rem' }}>
-          Weight trend: {data.weight_trend_kg_per_week > 0 ? '+' : ''}{data.weight_trend_kg_per_week} kg/week
-          {data.avg_logged_calories != null && ` · avg logged: ${data.avg_logged_calories} kcal/day`}
-        </p>
-      )}
+      {data.weight_trend_kg_per_week != null && (() => {
+        const useMetric = user?.use_metric ?? false;
+        const trend = useMetric
+          ? data.weight_trend_kg_per_week
+          : Math.round(data.weight_trend_kg_per_week * 2.20462 * 10) / 10;
+        const unit = useMetric ? 'kg' : 'lb';
+        return (
+          <p className="muted small" style={{ marginTop: '0.25rem' }}>
+            Weight trend: {trend > 0 ? '+' : ''}{trend} {unit}/week
+            {data.avg_logged_calories != null && ` · avg logged: ${data.avg_logged_calories} kcal/day`}
+          </p>
+        );
+      })()}
       {cur !== suggested && (
         <div className="btn-row">
           <button type="button" className="btn primary small" disabled={busy} onClick={applyTarget}>

@@ -168,36 +168,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {Array.isArray(data?.micros) && data.micros.length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <h2>Vitamins &amp; minerals</h2>
-                <span className="muted small">{range === 'weekly' ? '7-day total vs 7× DV' : 'vs daily value'}</span>
-              </div>
-              {data.micros.some((m) => m.amount > 0) ? (
-                <div className="micro-grid">
-                  {data.micros.filter((m) => m.pct_dv != null).map((m) => {
-                    const pct = Math.max(0, Math.min(100, m.pct_dv));
-                    return (
-                      <div className="micro-row" key={m.label}>
-                        <div className="label-line">
-                          <span className="label">{m.label}</span>
-                          <span className="value">{fmtNum(m.amount)} {m.unit} · {m.pct_dv}%</span>
-                        </div>
-                        <div className="micro-bar"><span className={pct >= 100 ? 'hit' : ''} style={{ width: `${pct}%` }} /></div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="muted small" style={{ margin: 0 }}>
-                  No micronutrient data yet. Log foods — vitamin/mineral values come from the USDA database
-                  and show up here automatically.
-                </p>
-              )}
-            </div>
-          )}
-
           {range === 'daily' && data.meals && (
             <>
               {MEAL_ORDER.map((mt) => {

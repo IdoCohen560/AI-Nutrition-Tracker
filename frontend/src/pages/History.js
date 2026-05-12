@@ -87,7 +87,8 @@ function ViewHistory({ dateParam, setParams, today, monthStart }) {
     setErr('');
     setLoading(true);
     try {
-      const data = await api(`/logs/history?start=${s}&end=${e}`);
+      const tz = new Date().getTimezoneOffset();
+      const data = await api(`/logs/history?start=${s}&end=${e}&tz=${tz}`);
       setEntries(data);
     } catch (ex) {
       setErr(ex.message);
@@ -186,7 +187,8 @@ function EditHistory({ today, monthStart, initialDate }) {
     setErr('');
     setLoading(true);
     try {
-      const data = await api(`/logs/history?start=${iso}&end=${iso}`);
+      const tz = new Date().getTimezoneOffset();
+      const data = await api(`/logs/history?start=${iso}&end=${iso}&tz=${tz}`);
       setEntries(data);
     } catch (ex) {
       setErr(ex.message);

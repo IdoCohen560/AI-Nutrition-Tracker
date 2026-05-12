@@ -271,9 +271,10 @@ def list_logs_for_date(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     log_date: date | None = Query(None, alias="date"),
+    tz_offset: int = Query(0, alias="tz"),
 ):
     d = log_date or utc_today()
-    start, end = utc_day_range(d)
+    start, end = utc_day_range(d, tz_offset)
     rows = (
         db.query(FoodLogEntry)
         .filter(
@@ -293,11 +294,12 @@ def history(
     db: Session = Depends(get_db),
     start: date = Query(..., description="Start date (inclusive)"),
     end: date = Query(..., description="End date (inclusive)"),
+    tz_offset: int = Query(0, alias="tz"),
 ):
     if end < start:
         raise HTTPException(400, "end must be on or after start")
-    start_dt, _ = utc_day_range(start)
-    _, end_next = utc_day_range(end + timedelta(days=1))
+    start_dt, _ = utc_day_range(start, tz_offset)
+    _, end_next = utc_day_range(end + timedelta(days=1), tz_offset)
     rows = (
         db.query(FoodLogEntry)
         .filter(

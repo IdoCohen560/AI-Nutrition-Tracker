@@ -132,8 +132,13 @@ def adjust_water(body: WaterAdjust, user: User = Depends(get_current_user), db: 
 
 
 @router.get("/water", response_model=WaterDayOut)
-def get_water(tz_offset: int = Query(0, alias="tz"), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    target = _local_today_iso(tz_offset)
+def get_water(
+    tz_offset: int = Query(0, alias="tz"),
+    date_param: str | None = Query(None, alias="date"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    target = date_param or _local_today_iso(tz_offset)
     entry = db.query(WaterEntry).filter(WaterEntry.user_id == user.id, WaterEntry.recorded_for == target).first()
     return WaterDayOut(date=target, cups=entry.cups if entry else 0)
 
@@ -348,8 +353,13 @@ def set_steps(body: StepsUpdate, user: User = Depends(get_current_user), db: Ses
 
 
 @router.get("/steps", response_model=StepsDayOut)
-def get_steps(tz_offset: int = Query(0, alias="tz"), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    target = _local_today_iso(tz_offset)
+def get_steps(
+    tz_offset: int = Query(0, alias="tz"),
+    date_param: str | None = Query(None, alias="date"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    target = date_param or _local_today_iso(tz_offset)
     entry = db.query(StepsEntry).filter(
         StepsEntry.user_id == user.id, StepsEntry.recorded_for == target
     ).first()

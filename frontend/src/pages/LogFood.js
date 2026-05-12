@@ -182,18 +182,22 @@ export default function LogFood() {
     }
     setBusy(true);
     try {
-      await api('/logs', {
-        method: 'POST',
-        body: JSON.stringify({
-          meal_type: mealType,
-          description_text: text,
-          items,
-          parse_confidence: parseConfidence,
-          confirmed: true,
-          for_date: forDate,
-          tz_offset: new Date().getTimezoneOffset(),
-        }),
-      });
+      const tzOffset = new Date().getTimezoneOffset();
+      // One log entry per parsed item — keeps History rows granular.
+      for (const item of items) {
+        await api('/logs', {
+          method: 'POST',
+          body: JSON.stringify({
+            meal_type: mealType,
+            description_text: item.name,
+            items: [item],
+            parse_confidence: parseConfidence,
+            confirmed: true,
+            for_date: forDate,
+            tz_offset: tzOffset,
+          }),
+        });
+      }
       nav(forDate === today ? '/dashboard' : `/history?tab=edit&date=${forDate}`);
     } catch (ex) {
       setErr(ex.message);

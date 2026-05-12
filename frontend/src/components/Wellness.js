@@ -71,23 +71,28 @@ export function WeightCard({ user, onSaved }) {
 }
 
 // --------------- Water ---------------
-export function WaterCard({ user, onUpdated }) {
+export function WaterCard({ user, onUpdated, date }) {
   const goal = user?.water_goal_cups || 8;
   const [cups, setCups] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   const load = useCallback(async () => {
-    try { setCups((await api(`/water?tz=${tz()}`)).cups); }
+    try {
+      const q = date ? `/water?tz=${tz()}&date=${date}` : `/water?tz=${tz()}`;
+      setCups((await api(q)).cups);
+    }
     catch (e) { setErr(e.message); }
-  }, []);
+  }, [date]);
   useEffect(() => { load(); }, [load]);
 
   async function adjust(delta) {
     setBusy(true);
     setErr('');
     try {
-      const r = await api('/water', { method: 'POST', body: JSON.stringify({ delta, tz_offset: tz() }) });
+      const body = { delta, tz_offset: tz() };
+      if (date) body.for_date = date;
+      const r = await api('/water', { method: 'POST', body: JSON.stringify(body) });
       setCups(r.cups);
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
@@ -410,7 +415,7 @@ export function AdaptiveTargetCard({ user, onApplied }) {
 }
 
 // --------------- Daily steps (manual entry; placeholder for wearable sync) ---------------
-export function StepsCard() {
+export function StepsCard({ date } = {}) {
   const [steps, setSteps] = useState(0);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -418,11 +423,12 @@ export function StepsCard() {
 
   const load = useCallback(async () => {
     try {
-      const r = await api(`/steps?tz=${tz()}`);
+      const q = date ? `/steps?tz=${tz()}&date=${date}` : `/steps?tz=${tz()}`;
+      const r = await api(q);
       setSteps(r.steps || 0);
       setInput(String(r.steps || 0));
     } catch (e) { /* ignore */ }
-  }, []);
+  }, [date]);
   useEffect(() => { load(); }, [load]);
 
   async function save() {
@@ -430,10 +436,9 @@ export function StepsCard() {
     if (n === steps) return;
     setBusy(true); setErr('');
     try {
-      const r = await api('/steps', {
-        method: 'POST',
-        body: JSON.stringify({ steps: n, tz_offset: tz() }),
-      });
+      const body = { steps: n, tz_offset: tz() };
+      if (date) body.for_date = date;
+      const r = await api('/steps', { method: 'POST', body: JSON.stringify(body) });
       setSteps(r.steps);
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }

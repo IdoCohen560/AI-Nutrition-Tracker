@@ -85,7 +85,7 @@ export default function Calendar() {
     if (!d) return;
     const iso = toISO(d);
     if (iso > todayISO) return;
-    nav(`/history?date=${iso}`);
+    nav(iso === todayISO ? '/dashboard' : `/dashboard?date=${iso}`);
   }
 
   return (

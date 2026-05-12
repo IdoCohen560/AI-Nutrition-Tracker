@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 import Calendar from '../components/Calendar';
@@ -35,11 +35,21 @@ function todayISO() {
 }
 
 export default function Dashboard() {
-  const [date] = useState(todayISO());
+  const today = todayISO();
+  const [params, setParams] = useSearchParams();
+  const urlDate = params.get('date');
+  const urlRange = params.get('range') === 'weekly' ? 'weekly' : 'daily';
+  const date = urlDate && urlDate <= today ? urlDate : today;
+  const range = urlRange;
   const { user, refreshUser } = useAuth();
-  const [range, setRange] = useState('daily');
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
+
+  const setRange = (r) => {
+    const next = new URLSearchParams(params);
+    if (r === 'daily') next.delete('range'); else next.set('range', r);
+    setParams(next, { replace: true });
+  };
 
   const load = useCallback(async () => {
     setErr('');
@@ -77,21 +87,35 @@ export default function Dashboard() {
     { value: 100 - ringPct, color: 'var(--border)' },
   ];
 
+  const isToday = date === today;
+
   return (
     <div className="page dashboard">
-      <h1 className="date-header">{fmtDate(date)}</h1>
+      <h1 className="date-header">
+        {fmtDate(date)}
+        {!isToday && (
+          <button
+            type="button"
+            className="btn ghost small"
+            style={{ marginLeft: '0.75rem' }}
+            onClick={() => setParams({}, { replace: true })}
+          >
+            Back to today
+          </button>
+        )}
+      </h1>
 
       <Calendar />
 
       <StatsCard refreshKey={data?.calories?.consumed || 0} />
 
       <div className="grid-2">
-        <WaterCard user={user} onUpdated={refreshUser} />
+        <WaterCard user={user} onUpdated={refreshUser} date={isToday ? undefined : date} />
         <FastingCard />
       </div>
 
       <div className="grid-2">
-        <StepsCard />
+        <StepsCard date={isToday ? undefined : date} />
         <AdaptiveTargetCard user={user} onApplied={refreshUser} />
       </div>
 

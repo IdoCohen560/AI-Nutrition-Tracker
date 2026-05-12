@@ -299,7 +299,7 @@ def history(
     if end < start:
         raise HTTPException(400, "end must be on or after start")
     start_dt, _ = utc_day_range(start, tz_offset)
-    _, end_next = utc_day_range(end + timedelta(days=1), tz_offset)
+    _, end_next = utc_day_range(end, tz_offset)
     rows = (
         db.query(FoodLogEntry)
         .filter(

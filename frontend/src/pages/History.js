@@ -46,6 +46,30 @@ function fmtShort(iso) {
   return parseISO(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snacks', 'snack'];
+const MEAL_LABEL = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks', snack: 'Snacks' };
+
+function mealRank(m) {
+  const i = MEAL_ORDER.indexOf((m || '').toLowerCase());
+  return i === -1 ? MEAL_ORDER.length : i;
+}
+
+function groupByMeal(entries) {
+  const buckets = new Map();
+  for (const e of entries) {
+    const key = (e.meal_type || 'other').toLowerCase();
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(e);
+  }
+  // Within each meal, sort by created_at ascending (logged-first first).
+  for (const list of buckets.values()) {
+    list.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  }
+  return [...buckets.entries()]
+    .sort((a, b) => mealRank(a[0]) - mealRank(b[0]))
+    .map(([meal, items]) => ({ meal, items }));
+}
+
 export default function History() {
   const [params, setParams] = useSearchParams();
   const initialTab = params.get('tab') === 'edit' ? 'edit' : 'view';
@@ -144,19 +168,23 @@ function ViewHistory({ dateParam, setParams, today, monthStart }) {
                 {fmtDate(date)} <span className="muted">· {byDate[date].total} kcal total</span>
               </h2>
             </div>
-            <ul className="entry-list">
-              {byDate[date].items.map((e) => (
-                <li key={e.id} className="entry-row">
-                  <div>
-                    <strong>{e.meal_type}</strong>
-                    <span className="muted"> · {e.total_calories} kcal</span>
-                    <p className="small muted">
-                      {e.description_text || e.items?.map((i) => i.name).join(', ')}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {groupByMeal(byDate[date].items).map(({ meal, items }) => (
+              <div key={meal} className="meal-group">
+                <h3 className="meal-heading">{MEAL_LABEL[meal] || meal}</h3>
+                <ul className="entry-list">
+                  {items.map((e) => (
+                    <li key={e.id} className="entry-row">
+                      <div>
+                        <span className="muted">{e.total_calories} kcal</span>
+                        <p className="small muted">
+                          {e.description_text || e.items?.map((i) => i.name).join(', ')}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         ))}
 
@@ -315,22 +343,26 @@ function EditHistory({ today, monthStart, initialDate }) {
         {err && <div className="error-banner">{err}</div>}
         {loading && <p className="muted">Loading…</p>}
         {!loading && entries.length === 0 && <p className="muted">No entries logged.</p>}
-        <ul className="entry-list">
-          {entries.map((e) => (
-            <li key={e.id} className="entry-row">
-              <div>
-                <strong>{e.meal_type}</strong>
-                <span className="muted"> · {e.total_calories} kcal</span>
-                <p className="small muted">
-                  {e.description_text || e.items?.map((i) => i.name).join(', ')}
-                </p>
-              </div>
-              <button type="button" className="btn danger ghost small" onClick={() => setConfirmEntry(e)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+        {groupByMeal(entries).map(({ meal, items }) => (
+          <div key={meal} className="meal-group">
+            <h3 className="meal-heading">{MEAL_LABEL[meal] || meal}</h3>
+            <ul className="entry-list">
+              {items.map((e) => (
+                <li key={e.id} className="entry-row">
+                  <div>
+                    <span className="muted">{e.total_calories} kcal</span>
+                    <p className="small muted">
+                      {e.description_text || e.items?.map((i) => i.name).join(', ')}
+                    </p>
+                  </div>
+                  <button type="button" className="btn danger ghost small" onClick={() => setConfirmEntry(e)}>
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
         {canEdit && (
           <div className="edit-day-actions">
             <Link to={`/log?date=${selectedDate}`} className="btn primary">

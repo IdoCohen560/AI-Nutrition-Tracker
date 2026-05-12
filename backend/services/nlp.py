@@ -6,6 +6,27 @@ import httpx
 from config import settings
 
 
+_WORD_NUMBERS: dict[str, str] = {
+    "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+    "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+    "eleven": "11", "twelve": "12", "thirteen": "13", "fourteen": "14",
+    "fifteen": "15", "sixteen": "16", "seventeen": "17", "eighteen": "18",
+    "nineteen": "19", "twenty": "20",
+    "half": "0.5", "quarter": "0.25",
+}
+
+
+def _normalize_word_numbers(part: str) -> str:
+    """Convert a leading word-number into digits so the quantity regex matches.
+    'three eggs' -> '3 eggs'. Only touches the first token of the segment."""
+    m = re.match(r"^([A-Za-z]+)(\s+.+)$", part)
+    if not m:
+        return part
+    first, rest = m.group(1), m.group(2)
+    digit = _WORD_NUMBERS.get(first.lower())
+    return f"{digit}{rest}" if digit else part
+
+
 def _heuristic_parse(text: str) -> tuple[list[dict], float]:
     """Split meal description into candidate food phrases; estimate confidence."""
     t = text.strip()
@@ -17,7 +38,7 @@ def _heuristic_parse(text: str) -> tuple[list[dict], float]:
         t,
         flags=re.IGNORECASE,
     )
-    parts = [p.strip() for p in parts if p.strip()]
+    parts = [_normalize_word_numbers(p.strip()) for p in parts if p.strip()]
     if not parts:
         parts = [t]
     items = []
@@ -56,6 +77,8 @@ async def parse_with_openai(text: str) -> tuple[list[dict], float, str | None]:
         "Split compound meals into individual foods (e.g. 'eggs with toast' => two items). "
         "Do NOT split single-dish compounds (e.g. 'peanut butter sandwich' is one item). "
         "Preserve explicit quantities (e.g. '3 eggs', '2 cups rice', '100g chicken'). "
+        "Convert written-out numbers to digits ('three eggs' => quantity '3', name 'eggs'; "
+        "'half a cup of rice' => quantity '0.5 cups', name 'rice'). "
         'Return JSON: {"items":[{"name":"food name","quantity":"count + unit, e.g. \\"3\\", \\"2 cups\\", \\"100g\\" or null"}],'
         '"confidence":0.0-1.0}. Use confidence 0.9+ if clear, lower if ambiguous.'
     )
